@@ -1,8 +1,9 @@
 # VIOS
-## A visual-inertial version of [ORB_SLAM2](https://github.com/raulmur/ORB_SLAM2)
-** Original Authors:** [Raul Mur-Artal](http://webdiis.unizar.es/~raulmur/), [Juan D. Tardos](http://webdiis.unizar.es/~jdtardos/), [J. M. M. Montiel](http://webdiis.unizar.es/~josemari/) and [Dorian Galvez-Lopez](http://doriangalvez.com/) ([DBoW2](https://github.com/dorian3d/DBoW2))
+**A visual-inertial version of [ORB_SLAM2](https://github.com/raulmur/ORB_SLAM2)**
 
-** VIOS Author:** Russell Buchanan 
+**Original Authors:** [Raul Mur-Artal](http://webdiis.unizar.es/~raulmur/), [Juan D. Tardos](http://webdiis.unizar.es/~jdtardos/), [J. M. M. Montiel](http://webdiis.unizar.es/~josemari/) and [Dorian Galvez-Lopez](http://doriangalvez.com/) ([DBoW2](https://github.com/dorian3d/DBoW2))
+
+**VIOS Author:** Russell Buchanan 
 
 # Prerequisites
 This version requires all the same prerequisites as the original ORB_SLAM2:
