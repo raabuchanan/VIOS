@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(ORB_SLAM2)
+project(VIOS)
 
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
@@ -44,29 +44,32 @@ ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/include
 ${EIGEN3_INCLUDE_DIR}
 ${Pangolin_INCLUDE_DIRS}
+/opt/ros/kinetic/include
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 add_library(${PROJECT_NAME} SHARED
-src/System.cc
-src/Tracking.cc
+src/Converter.cc
+src/Frame.cc
+src/FrameDrawer.cc
+src/Initializer.cc
+src/KeyFrame.cc
+src/KeyFrameDatabase.cc
 src/LocalMapping.cc
 src/LoopClosing.cc
-src/ORBextractor.cc
-src/ORBmatcher.cc
-src/FrameDrawer.cc
-src/Converter.cc
-src/MapPoint.cc
-src/KeyFrame.cc
+src/Manifold.cc
 src/Map.cc
 src/MapDrawer.cc
+src/MapPoint.cc
+src/MotionModel.cc
 src/Optimizer.cc
+src/ORBextractor.cc
+src/ORBmatcher.cc
 src/PnPsolver.cc
-src/Frame.cc
-src/KeyFrameDatabase.cc
 src/Sim3Solver.cc
-src/Initializer.cc
+src/System.cc
+src/Tracking.cc
 src/Viewer.cc
 )
 

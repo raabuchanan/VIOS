@@ -21,7 +21,7 @@
 #ifndef FRAME_H
 #define FRAME_H
 
-#include<vector>
+#include <vector>
 
 #include "MapPoint.h"
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
@@ -78,6 +78,8 @@ public:
     inline cv::Mat GetRotationInverse(){
         return mRwc.clone();
     }
+
+    cv::Mat GetPoseWorldFrame();
 
     // Check if a MapPoint is in the frustum of the camera
     // and fill variables of the MapPoint to be used by the tracking

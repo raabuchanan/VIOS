@@ -22,23 +22,25 @@
 #ifndef TRACKING_H
 #define TRACKING_H
 
-#include<opencv2/core/core.hpp>
-#include<opencv2/features2d/features2d.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/features2d/features2d.hpp>
 
-#include"Viewer.h"
-#include"FrameDrawer.h"
-#include"Map.h"
-#include"LocalMapping.h"
-#include"LoopClosing.h"
-#include"Frame.h"
+#include "Viewer.h"
+#include "FrameDrawer.h"
+#include "Map.h"
+#include "LocalMapping.h"
+#include "LoopClosing.h"
+#include "MotionModel.h"
+#include "Frame.h"
 #include "ORBVocabulary.h"
-#include"KeyFrameDatabase.h"
-#include"ORBextractor.h"
+#include "KeyFrameDatabase.h"
+#include "ORBextractor.h"
 #include "Initializer.h"
 #include "MapDrawer.h"
 #include "System.h"
 
 #include <mutex>
+#include <unistd.h>
 
 namespace ORB_SLAM2
 {
@@ -48,6 +50,7 @@ class FrameDrawer;
 class Map;
 class LocalMapping;
 class LoopClosing;
+class MotionModel;
 class System;
 
 class Tracking
@@ -64,6 +67,7 @@ public:
 
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
+    void SetMotionModel(MotionModel* pMotionModel);
     void SetViewer(Viewer* pViewer);
 
     // Load new settings
@@ -115,6 +119,15 @@ public:
 
     void Reset();
 
+    // My additions
+    // Camera Velocity
+    cv::Mat mVel_;
+    cv::Mat T_C_B_, T_B_C_;
+    
+    cv::Mat LastTwc_;
+
+    bool ClosingLoop_;
+
 protected:
 
     // Main tracking function. It is independent of the input sensor.
@@ -153,6 +166,7 @@ protected:
     //Other Thread Pointers
     LocalMapping* mpLocalMapper;
     LoopClosing* mpLoopClosing;
+    MotionModel* mpMotionModeler;
 
     //ORB
     ORBextractor* mpORBextractorLeft, *mpORBextractorRight;
@@ -209,11 +223,14 @@ protected:
 
     //Motion Model
     cv::Mat mVelocity;
+    cv::Mat tempVel;
 
     //Color order (true RGB, false BGR, ignored if grayscale)
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
+
+    cv::Mat g_;
 };
 
 } //namespace ORB_SLAM

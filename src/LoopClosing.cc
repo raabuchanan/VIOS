@@ -28,8 +28,8 @@
 
 #include "ORBmatcher.h"
 
-#include<mutex>
-#include<thread>
+#include <mutex>
+#include <thread>
 
 
 namespace ORB_SLAM2
@@ -78,8 +78,9 @@ void LoopClosing::Run()
 
         ResetIfRequested();
 
-        if(CheckFinish())
+        if(CheckFinish()){
             break;
+        }
 
         usleep(5000);
     }
@@ -428,6 +429,9 @@ void LoopClosing::CorrectLoop()
         usleep(1000);
     }
 
+    // Stop integration of velocity
+    mpTracker->ClosingLoop_ = true;
+
     // Ensure current keyframe is updated
     mpCurrentKF->UpdateConnections();
 
@@ -739,6 +743,8 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
             mpMap->InformNewBigChange();
 
             mpLocalMapper->Release();
+
+            mpTracker->ClosingLoop_ = false;
 
             cout << "Map updated!" << endl;
         }

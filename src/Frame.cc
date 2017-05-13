@@ -433,6 +433,16 @@ void Frame::UndistortKeyPoints()
     }
 }
 
+cv::Mat Frame::GetPoseWorldFrame()
+{
+    cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
+    
+    GetRotationInverse().copyTo(LastTwc.rowRange(0,3).colRange(0,3));
+    GetCameraCenter().copyTo(LastTwc.rowRange(0,3).col(3));
+
+    return LastTwc;
+}
+
 void Frame::ComputeImageBounds(const cv::Mat &imLeft)
 {
     if(mDistCoef.at<float>(0)!=0.0)

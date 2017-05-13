@@ -29,9 +29,9 @@
 namespace ORB_SLAM2
 {
 
-System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
-               const bool bUseViewer):mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false),mbActivateLocalizationMode(false),
-        mbDeactivateLocalizationMode(false)
+System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, bool imu, const bool bUseViewer):
+               mSensor(sensor), mIMU(imu), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false),mbActivateLocalizationMode(false),
+               mbDeactivateLocalizationMode(false)
 {
     // Output welcome message
     cout << endl <<
@@ -48,6 +48,11 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         cout << "Stereo" << endl;
     else if(mSensor==RGBD)
         cout << "RGB-D" << endl;
+
+    if(mIMU==true)
+        cout << "Using IMU" <<endl;
+    else
+        cout << "No IMU" << endl;
 
     //Check settings file
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
@@ -86,6 +91,10 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
                              mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor);
 
+    //Initialize Motion Model thread
+    mpMotionModeler = new MotionModel(strSettingsFile);
+    //mptMotionModel = new thread(&ORB_SLAM2::MotionModel::Run,mpMotionModeler);
+
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR);
     mptLocalMapping = new thread(&ORB_SLAM2::LocalMapping::Run,mpLocalMapper);
@@ -105,6 +114,9 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //Set pointers between threads
     mpTracker->SetLocalMapper(mpLocalMapper);
     mpTracker->SetLoopClosing(mpLoopCloser);
+    mpTracker->SetMotionModel(mpMotionModeler);
+
+    mpMotionModeler->setTracker(mpTracker);
 
     mpLocalMapper->SetTracker(mpTracker);
     mpLocalMapper->SetLoopCloser(mpLoopCloser);
@@ -471,6 +483,11 @@ void System::SaveTrajectoryKITTI(const string &filename)
     cout << endl << "trajectory saved!" << endl;
 }
 
+MotionModel* System::GetMotionModeler()
+{
+    return mpMotionModeler;
+}
+
 int System::GetTrackingState()
 {
     unique_lock<mutex> lock(mMutexState);
@@ -488,5 +505,7 @@ vector<cv::KeyPoint> System::GetTrackedKeyPointsUn()
     unique_lock<mutex> lock(mMutexState);
     return mTrackedKeyPointsUn;
 }
+
+
 
 } //namespace ORB_SLAM
