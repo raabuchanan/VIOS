@@ -29,8 +29,8 @@
 namespace ORB_SLAM2
 {
 
-System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, bool imu, const bool bUseViewer):
-               mSensor(sensor), mIMU(imu), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false),mbActivateLocalizationMode(false),
+System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer):
+               mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false),mbActivateLocalizationMode(false),
                mbDeactivateLocalizationMode(false)
 {
     // Output welcome message
@@ -48,11 +48,6 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         cout << "Stereo" << endl;
     else if(mSensor==RGBD)
         cout << "RGB-D" << endl;
-
-    if(mIMU==true)
-        cout << "Using IMU" <<endl;
-    else
-        cout << "No IMU" << endl;
 
     //Check settings file
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
@@ -93,7 +88,6 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
     //Initialize Motion Model thread
     mpMotionModeler = new MotionModel(strSettingsFile);
-    //mptMotionModel = new thread(&ORB_SLAM2::MotionModel::Run,mpMotionModeler);
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR);
@@ -116,7 +110,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpTracker->SetLoopClosing(mpLoopCloser);
     mpTracker->SetMotionModel(mpMotionModeler);
 
-    mpMotionModeler->setTracker(mpTracker);
+    mpMotionModeler->SetTracker(mpTracker);
 
     mpLocalMapper->SetTracker(mpTracker);
     mpLocalMapper->SetLoopCloser(mpLoopCloser);

@@ -1,10 +1,12 @@
-/** *************************************************************************************
+/**
+ **************************************************************************************
  *
  *  Authors:        Russell Buchanan, russellb@student.ethz.ch
  *
  *  File:           MotionModel.cc
  *
- *  Description:    Class member functions for Motion thread which integrates potition
+ *  Description:    Class member functions for Motion thread which integrates
+ *potition
  *					IMU data
  *
  *
@@ -16,189 +18,123 @@ using namespace std;
 
 namespace ORB_SLAM2
 {
-	MotionModel::MotionModel(const string &strSettingPath)
-	{
-		cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
+MotionModel::MotionModel(const string& strSettingPath)
+{
+	mInitCount = 0;
 
-		// rate_ 				= fSettings["IMU.rate"];
-		// gyro_noise_density_ = fSettings["IMU.gyroscope_noise_density"];
-		// gyro_rand_walk_ 	= fSettings["IMU.gyroscope_random_walk"];
-		// acc_noise_density_ 	= fSettings["IMU.accelerometer_noise_density"];
-		// acc_rand_walk_ 		= fSettings["IMU.accelerometer_random_walk"];
+    mdTimeSum = 0;
+    mdTime2Sum = 0;
+    mLastTime = 0;
 
-		// cout << "- rate_: " 				<< rate_ 				<< endl;
-		// cout << "- gyro_noise_density_: " 	<< gyro_noise_density_ 	<< endl;
-		// cout << "- gyro_rand_walk_: " 		<< gyro_rand_walk_ 		<< endl;
-		// cout << "- acc_noise_density_: " 	<< acc_noise_density_ 	<< endl;
-		// cout << "- acc_rand_walk_: " 		<< acc_rand_walk_ 		<< endl;
+    mCurrentMeasurement.AngularVelocity = Eigen::Vector3d::Zero(3);
+    mCurrentMeasurement.LinearAcceleration = Eigen::Vector3d::Zero(3);
 
-	    dt_sum_ = 0;
-	    dt2_sum_ = 0;
-	    last_time_ = 0;
+    mCurrentMotion.dPosition = Eigen::Vector3d::Zero(3);
+    mCurrentMotion.dVelocity = Eigen::Vector3d::Zero(3);
 
-	    // TODO Figure out why this crashes if after the Eigen allocations below
-	    //pub_ = n_.advertise<geometry_msgs::PoseStamped>("/pose", 1);
+    mCurrentMotion.dR_W_B = Eigen::Matrix3d::Identity(3, 3);
 
-	    ms_.ang_vel = Eigen::Vector3d::Zero(3);
-	    ms_.lin_acc = Eigen::Vector3d::Zero(3);
+    mAccelBias = Eigen::Vector3d::Zero(3);
+    mGyroBias = Eigen::Vector3d::Zero(3);
 
-	    ds_.pos = Eigen::Vector3d::Zero(3);
-	    ds_.vel = Eigen::Vector3d::Zero(3);
+    mGravity = Eigen::Vector3d::Zero(3);
+    mGravity(2) = GRAVITATIONAL_ACCELERATION;
+}
 
+void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
+{
+    if (mInitCount < 50)
+    {
+        mLastTime = NewMeasurement->TimeStamp;
+        mAccelBias += NewMeasurement->LinearAcceleration + mGravity;
+        mGyroBias += NewMeasurement->AngularVelocity;
+        mInitCount++;
 
-	    ds_.R_WB = Eigen::Matrix3d::Identity(3,3);
+        if (mInitCount == 50)
+        {
+            mAccelBias = mAccelBias / 50;
+            mGyroBias = mGyroBias / 50;
+        }
 
-	    eta_ad_ = Eigen::Vector3d::Zero(3);
-	    eta_gd_ = Eigen::Vector3d::Zero(3);
+        // cout << "Accel Bias" << mAccelBias << endl;
+        // cout << "Vel Bias" << mGyroBias << endl;
+    }
+    else
+    {
+        float dt = (NewMeasurement->TimeStamp - mLastTime) / 1000.0;
 
-	    b_a_ = Eigen::Vector3d::Zero(3);
-	    b_g_ = Eigen::Vector3d::Zero(3);
+        // cout << "NewMeasurement->TimeStamp " << NewMeasurement->TimeStamp << endl;
+        // cout << "mLastTime " << mLastTime << endl;
+        // cout << "dt " << dt << endl;
 
-    	// Eigen::Matrix3d initialPose;
+        if (abs(dt - 0.005) > 0.0001)
+        {
+            printf("dt: %f this time: %ld last time: %ld\n", dt,
+                   NewMeasurement->TimeStamp, mLastTime);
+        }
 
-    	// initialPose << 1.0000, 0, 0,
-					//    0, 0.9397, -0.3420,
-					//    0, 0.3420, 0.9397;
+        mLastTime = NewMeasurement->TimeStamp;
 
-	    g_ = Eigen::Vector3d::Zero(3);
-	    g_(2) = -9.80740;
+        // cout << "NewMeasurement->LinearAcceleration - mAccelBias = " <<
+        // endl << NewMeasurement->LinearAcceleration - mAccelBias << endl;
+        // cout << "NewMeasurement->AngularVelocity - mAccelBias = " << endl
+        // << NewMeasurement->AngularVelocity - mGyroBias << endl;
 
-	    
-	    // g_ = initialPose*g; // needed for imu0
+        Eigen::Matrix3d dR =
+            ExpMap((NewMeasurement->AngularVelocity - mGyroBias) * dt);
 
-	    new_meas_ = false;
+        // mCurrentMotion.dVelocity +=
+        //     mCurrentMotion.dR_W_B *
+        //     (NewMeasurement->LinearAcceleration - mAccelBias) * dt;
 
-	    init_count = 0;
-	}
+        mCurrentMotion.dPosition +=
+            3 * mCurrentMotion.dR_W_B *
+            (NewMeasurement->LinearAcceleration - mAccelBias) * dt * dt / 2;
 
+        mCurrentMotion.dR_W_B = mCurrentMotion.dR_W_B * dR;
 
-	void MotionModel::Run()
-	{
-		int count = 0;
-		while(1)
-		{
-			if(new_meas_)
-			{
-				//cout << "processing" <<endl;
-				ProcessIMUMeas();
-				new_meas_ = false;
-			}
+        mdTimeSum += dt;
+        mdTime2Sum += dt * dt;
+    }
+}
 
-			//usleep(10); //1ms
-/*
-			if (count > 100)
-			{
-				printPose();
-				count = 0;
-			}
+void MotionModel::SetTracker(Tracking* pTracking) { mpTracker = pTracking; }
 
-			count++;
-*/
-		}
+void MotionModel::NewMeasurement(struct ImuMeasurement* NewMeasurement)
+{
+    mCurrentMeasurement.TimeStamp = NewMeasurement->TimeStamp;
 
-	}
+    mCurrentMeasurement.AngularVelocity = NewMeasurement->AngularVelocity;
+    mCurrentMeasurement.LinearAcceleration = NewMeasurement->LinearAcceleration;
 
-	void MotionModel::ProcessIMUMeas()
-	{
-		if(init_count < 50)
-		{
-			last_time_ = ms_.time_stamp;
-			b_a_ += ms_.lin_acc + g_;
-			b_g_ += ms_.ang_vel;
-			init_count++;
+    //IntegrateImuMeasurement();
+}
 
-			if(init_count == 50)
-			{
-				b_a_ = b_a_/50;
-				b_g_ = b_g_/50;
-			}
+void MotionModel::GetMotionModel(cv::Mat& rotInc, cv::Mat& posInc,
+                                 cv::Mat& velInc, float& timeInc,
+                                 float& time2Inc)
+{
+    cv::eigen2cv(mCurrentMotion.dR_W_B, rotInc);
+    cv::eigen2cv(mCurrentMotion.dPosition, posInc);
+    //cv::eigen2cv(mCurrentMotion.dVelocity, velInc);
 
-			//cout << "Accel Bias" << b_a_ << endl;
-			//cout << "Vel Bias" << b_g_ << endl;
+    rotInc.convertTo(rotInc, CV_32F);
+    posInc.convertTo(posInc, CV_32F);
+    //velInc.convertTo(velInc, CV_32F);
 
-		}
-		else
-		{
+    timeInc = mdTimeSum;
+    time2Inc = mdTime2Sum;
 
-			float dt = (ms_.time_stamp - last_time_)/1000.0;
-			
+    ResetIntegration();
+}
 
-			if(abs(dt-0.005)>0.0001){
-				printf("dt: %f this time: %ld last time: %ld\n", dt, ms_.time_stamp, last_time_);
-			}
+void MotionModel::ResetIntegration()
+{
+    mCurrentMotion.dPosition = Eigen::Vector3d::Zero(3);
+    //mCurrentMotion.dVelocity = Eigen::Vector3d::Zero(3);
+    mCurrentMotion.dR_W_B = Eigen::Matrix3d::Identity(3, 3);
+    mdTimeSum = 0;
+    mdTime2Sum = 0;
+}
 
-			last_time_ = ms_.time_stamp;
-			
-
-			// cout << "ms_.lin_acc - b_a_ = " << endl << ms_.lin_acc - b_a_ << endl;
-			// cout << "ms_.ang_vel - b_a_ = " << endl << ms_.ang_vel - b_g_ << endl;
-			
-			Eigen::Vector3d omegadt = (ms_.ang_vel - b_g_ - eta_gd_)*dt;
-			Eigen::Matrix3d dR = ExpMap(omegadt);
-
-			ds_.vel += ds_.R_WB*(ms_.lin_acc - b_a_ - eta_ad_)*dt;
-
-			ds_.pos += 3*ds_.R_WB*(ms_.lin_acc - b_a_ - eta_ad_)*dt*dt/2;
-
-			ds_.R_WB = ds_.R_WB*dR;
-
-			dt_sum_ += dt;
-			dt2_sum_ += dt*dt;
-
-			// cout << "dt " << dt << endl;
-			// cout << "dR " << endl << ds_.R_WB << endl;
-			// cout << "dpos " << endl << ds_.pos << endl;
-
-			// if(dt_sum_ > 0.2)
-			// 	ResetIntegration();
-
-		}
-
-	}
-
-	void MotionModel::setTracker(Tracking *pTracking)
-	{
-	    mpTracker_=pTracking;
-	}
-
-	void MotionModel::NewMeasurement(struct IMUMeas* new_meas)
-	{
-
-		ms_.time_stamp = new_meas->time_stamp;
-
-		ms_.ang_vel = new_meas->ang_vel;
-		ms_.lin_acc = new_meas->lin_acc;
-
-		new_meas_ = true;
-	}
-
-    void MotionModel::GetMotionModel(cv::Mat& rot, cv::Mat& pos, cv::Mat& vel, float& dt_total, float& dt2_total)
-	{
-
-		cv::eigen2cv(ds_.R_WB,rot);
-		cv::eigen2cv(ds_.pos,pos);
-		cv::eigen2cv(ds_.vel,vel);
-
-		rot.convertTo(rot,CV_32F);
-		pos.convertTo(pos, CV_32F);
-		vel.convertTo(vel, CV_32F);
-
-		dt_total = dt_sum_;
-		dt2_total = dt2_sum_;
-
-		ResetIntegration();
-
-
-	}
-
-	void MotionModel::ResetIntegration()
-	{
-	    ds_.pos = Eigen::Vector3d::Zero(3);
-	    ds_.vel = Eigen::Vector3d::Zero(3);
-	    ds_.R_WB = Eigen::Matrix3d::Identity(3,3);
-	    dt_sum_ = 0;
-	    dt2_sum_ = 0;
-	}
-
-
-} //namespace ORB_SLAM
+}  // namespace ORB_SLAM

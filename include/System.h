@@ -63,7 +63,7 @@ public:
 public:
     
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
-    System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, bool imu, const bool bUseViewer = true);
+    System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true);
 
     // Proccess the given stereo frame. Images must be synchronized and rectified.
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
@@ -132,9 +132,6 @@ private:
     // Input sensor
     eSensor mSensor;
 
-    // Input IMU for now just true/false
-    bool mIMU;
-
     // ORB vocabulary used for place recognition and feature matching.
     ORBVocabulary* mpVocabulary;
 
@@ -156,6 +153,8 @@ private:
     // a pose graph optimization and full bundle adjustment (in a new thread) afterwards.
     LoopClosing* mpLoopCloser;
 
+    // Motion Modeler. It integrates data from the IMU in between each frame. It provides this
+    // change in Position, Rotation and Velocity for feature location prediciton.
     MotionModel* mpMotionModeler;
 
     // The viewer draws the map and the current camera pose. It uses Pangolin.

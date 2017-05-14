@@ -46,28 +46,24 @@ Eigen::Vector3d Vee(const Eigen::Matrix3d& mat)
 
 Eigen::Matrix3d ExpMap(const Eigen::Vector3d& omegadt)
 {
-
 	double theta = omegadt.norm(); //l2 norm
-	//printf("NORM: %f\n", theta);
 	double w = cos(theta/2);
-	double coeff;
+	double ImCoeff;
 
 	if(theta < 1.5e-5)
 	{
-		//printf("[Manifold] WARNING: Small change in angle detected! \n");
-		coeff = 0.5 - theta*theta/48; // Taylor Expansion
+		ImCoeff = 0.5 - theta*theta/48; // Taylor Expansion
 	}
 	else
 	{
-		coeff = sin(theta/2)/theta; //Expmap
+		ImCoeff = sin(theta/2)/theta; //Expmap
 	}
 
-	Eigen::Quaterniond quat(w,coeff*omegadt.x(),coeff*omegadt.y(),coeff*omegadt.z());
+	Eigen::Quaterniond quat(w,ImCoeff*omegadt.x(),ImCoeff*omegadt.y(),ImCoeff*omegadt.z());
 
 	quat.normalize();
 
 	return quat.toRotationMatrix();
-
 }
 
 Eigen::Matrix3d RightJac(const Eigen::Vector3d& phi)
@@ -87,7 +83,6 @@ Eigen::Matrix3d RightJac(const Eigen::Vector3d& phi)
 	}
 
 	return Jr;
-
 }
 
 

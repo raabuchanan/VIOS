@@ -47,7 +47,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
     mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
-    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0)
+    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0), mbClosingLoop(false)
 {
     // Load camera parameters from settings file
 
@@ -149,12 +149,10 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
 
-    g_ = cv::Mat::zeros(3,1,CV_32F);
-    g_.at<float>(0,2) = -9.80740;
+    mGravity = cv::Mat::zeros(3,1,CV_32F);
+    mGravity.at<float>(0,2) = GRAVITATIONAL_ACCELERATION;
 
     Eigen::Matrix4d T_C_B, T_B_C;
-
-
     // // fcu my dataset
     // T_C_B << -0.01608348181631905, -0.9997945183852488, 0.012338663601662525, 0.06790925527780403, 
     //       -0.39884506982516615, -0.004900808655335959, -0.9170052302744433, 0.011256054951169886,
@@ -162,16 +160,16 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     //        0.0, 0.0, 0.0, 1.0;
 
     // // imu0 my dataset
-    T_C_B << -0.9999905032681178, 0.002951493681203541, -0.0032065649263243443, 0.03826150250561798,
-          -0.0029601719116817806, -0.999991960070219, 0.0027050281283897666, -0.009637506816586773,
-          -0.0031985552723390776, 0.002714494422890786, 0.9999912003433822, -0.005788228045996118,
-           0.0, 0.0, 0.0, 1.0;
+    // T_C_B << -0.9999905032681178, 0.002951493681203541, -0.0032065649263243443, 0.03826150250561798,
+    //       -0.0029601719116817806, -0.999991960070219, 0.0027050281283897666, -0.009637506816586773,
+    //       -0.0031985552723390776, 0.002714494422890786, 0.9999912003433822, -0.005788228045996118,
+    //        0.0, 0.0, 0.0, 1.0;
 
    // imu0 euroc that I calculated
-   // T_C_B << 0.01476960368055319, 0.9996668546037443, -0.02116692263358451, 0.06610086169028019,
-   //       -0.99986528036748, 0.01491752462460677, 0.006847523255539449, -0.013698980112073279,
-   //       0.0071610001243047556, 0.02106293582886804, 0.9997525057790498, -0.0007667891785872767,
-   //       0.0, 0.0, 0.0, 1.0;
+   T_C_B << 0.01476960368055319, 0.9996668546037443, -0.02116692263358451, 0.06610086169028019,
+         -0.99986528036748, 0.01491752462460677, 0.006847523255539449, -0.013698980112073279,
+         0.0071610001243047556, 0.02106293582886804, 0.9997525057790498, -0.0007667891785872767,
+         0.0, 0.0, 0.0, 1.0;
 
 
    // imu0 euroc that is given
@@ -187,16 +185,18 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     //         0,0,1,0,
     //         0,0,0,1;
 
-   cv::eigen2cv(T_C_B,T_C_B_);
-   T_C_B_.convertTo(T_C_B_, CV_32F);
+    cv::eigen2cv(T_C_B,mT_C_B);
+    mT_C_B.convertTo(mT_C_B, CV_32F);
 
-   T_B_C = T_C_B.inverse();
-   cv::eigen2cv(T_B_C,T_B_C_);
-   T_B_C_.convertTo(T_B_C_, CV_32F);
+    T_B_C = T_C_B.inverse();
+    cv::eigen2cv(T_B_C,mT_B_C);
+    mT_B_C.convertTo(mT_B_C, CV_32F);
 
 
-   ClosingLoop_ = false;
+    mR_C_B = mT_C_B.rowRange(0,3).colRange(0,3);
 
+    mV= cv::Mat::zeros(1,4, CV_32F);
+    mV.at<float>(0,3) = 1;
 }
 
 void Tracking::SetMotionModel(MotionModel* pMotionModel)
@@ -499,30 +499,14 @@ void Tracking::Track()
             // Update motion model
             if(!mLastFrame.mTcw.empty())
             {
-                cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
-                cv::Mat CurrTwc = cv::Mat::eye(4,4,CV_32F);
-
-                mLastFrame.GetRotationInverse().copyTo(LastTwc.rowRange(0,3).colRange(0,3));
-                mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0,3).col(3));
-
-                mVelocity = mCurrentFrame.mTcw*LastTwc;
-
-                //mCurrentFrame.GetRotationInverse().copyTo(CurrTwc.rowRange(0,3).colRange(0,3));
-                //mCurrentFrame.GetCameraCenter().copyTo(CurrTwc.rowRange(0,3).col(3));
-
                 //Don't update velocity if the loop is being closed
-                if(!ClosingLoop_){
+                if(!mbClosingLoop){
                     float dt = mCurrentFrame.mTimeStamp - mLastFrame.mTimeStamp;
 
-                    //cout << "mVel_ dt " << dt << endl;
-
-                    mVel_ = (mCurrentFrame.GetCameraCenter() - mLastFrame.GetCameraCenter()) / dt;
+                    mVelocity = (mCurrentFrame.GetCameraCenter() - mLastFrame.GetCameraCenter()) / dt;
                 }else{
                     cout <<"Not updating velocity while closing loop" << endl;
                 }
-
-
-
             }
             else
             {
@@ -608,24 +592,11 @@ void Tracking::StereoInitialization()
 {
     if(mCurrentFrame.N>500)
     {
-
-/*
-        Eigen::Matrix4d initialPose;
-        cv::Mat initialPoseOpencv;
-
-        initialPose << 1.0000, 0, 0,0,
-                       0, 0.9397, -0.3420,0,
-                       0, 0.3420, 0.9397,0,
-                       0,0,0,1;
-
-       cv::eigen2cv(initialPose,initialPoseOpencv);
-       initialPoseOpencv.convertTo(initialPoseOpencv, CV_32F);
-*/
         // Set Frame pose to the origin
         mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));
 
         // Set initial velocity
-        mVel_ = cv::Mat::zeros(3,1, CV_32F);
+        mVelocity = cv::Mat::zeros(3,1, CV_32F);
 
         // Create KeyFrame
         KeyFrame* pKFini = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
@@ -914,6 +885,8 @@ bool Tracking::TrackReferenceKeyFrame()
     return nmatchesMap>=10;
 }
 
+
+
 void Tracking::UpdateLastFrame()
 {
     // Update pose according to reference keyframe
@@ -1010,55 +983,48 @@ bool Tracking::TrackWithMotionModel()
     // Update last frame pose according to its reference keyframe
     // Create "visual odometry" points if in Localization Mode
     UpdateLastFrame();
-
-    cv::Mat constVelModelPose = mVelocity*mLastFrame.mTcw;
-
     float dt, dt2;
 
-    cv::Mat T_W_C_last = mLastFrame.GetPoseWorldFrame();
-    cv::Mat T_W_B_last = T_W_C_last*T_C_B_; // World to body in the world frame
-    cv::Mat R_W_B = T_W_B_last.rowRange(0,3).colRange(0,3);
-    cv::Mat t_W_B = T_W_B_last.rowRange(0,3).col(3);
+    //cv::Mat T_W_C_last = mLastFrame.GetPoseWorldFrame();
+    cv::Mat LastT_W_B = mLastFrame.GetPoseWorldFrame()*mT_C_B; // World to body in the world frame
+    cv::Mat R_W_B = LastT_W_B.rowRange(0,3).colRange(0,3);
+    cv::Mat t_W_B = LastT_W_B.rowRange(0,3).col(3);
 
-    cv::Mat rotInc(3,3,CV_32F);
-    cv::Mat posInc(3,1,CV_32F);
-    cv::Mat velInc(3,1,CV_32F);
+    cv::Mat RotInc(3,3,CV_32F);
+    cv::Mat PosInc(3,1,CV_32F);
+    cv::Mat VelInc(3,1,CV_32F);
 
-    mpMotionModeler->GetMotionModel(rotInc,posInc,velInc,dt, dt2);
+    mpMotionModeler->GetMotionModel(RotInc,PosInc,VelInc,dt, dt2);
 
     // Estimated Pose from world to body in world frame
-    cv::Mat rotEstimate = R_W_B*rotInc;
-    //cv::Mat velEstimate = mVel_ + R_W_B*velInc + T_C_B_.rowRange(0,3).colRange(0,3)*g_*dt;
-    //cv::Mat posEstimate = t_W_B + mVel_*dt + T_C_B_.rowRange(0,3).colRange(0,3)*0.5*g_*dt2 + R_W_B*posInc;
-    cv::Mat posEstimate = t_W_B + mVel_*dt + T_C_B_.rowRange(0,3).colRange(0,3)*0.5*g_*dt2 + R_W_B*posInc;
+    cv::Mat rotEstimate = R_W_B*RotInc;
+    //cv::Mat velEstimate = mVelocity + R_W_B*VelInc + mT_C_B.rowRange(0,3).colRange(0,3)*mGravity*dt;
+    cv::Mat posEstimate = t_W_B + mVelocity*dt + mR_C_B*0.5*mGravity*dt2 + R_W_B*PosInc;
 
-    cv::Mat T_W_B_current;
-    cv::Mat H;
-    cv::Mat V = cv::Mat::zeros(1,4, CV_32F);
-    V.at<float>(0,3) = 1;
+    cv::Mat CurrentT_W_B;
 
-    hconcat(rotEstimate, posEstimate, H);
-    vconcat(H, V, T_W_B_current);
+    hconcat(rotEstimate, posEstimate, mH);
+    vconcat(mH, mV, CurrentT_W_B);
 
-    cv::Mat T_W_C_current = T_W_B_current*T_B_C_;
+    cv::Mat T_W_C_current = CurrentT_W_B*mT_B_C;
 
     // T_C_W in camera frame
-    cv::Mat motionModelPose = T_W_C_current.inv();
+    cv::Mat motionModelGuess = T_W_C_current.inv();
 
 
     // cout << "delta t " << dt << endl;
     // cout << "delta t2 " << dt2 << endl;
-    // cout << "mVel_*dt" << endl << mVel_*dt << endl;
+    // cout << "mVelocity*dt" << endl << mVelocity*dt << endl;
 
-    // cout << "posInc" << endl << posInc << endl;
+    // cout << "PosInc" << endl << PosInc << endl;
 
-    // cout << "R_W_B*posInc" << endl << R_W_B*posInc << endl;
+    // cout << "R_W_B*PosInc" << endl << R_W_B*PosInc << endl;
 
-    // cout << "T_C_B_.rowRange(0,3).colRange(0,3)*0.5*g_*dt2" << endl 
-    // << 3*T_C_B_.rowRange(0,3).colRange(0,3)*0.5*g_*dt2 << endl;
+    // cout << "mT_C_B.rowRange(0,3).colRange(0,3)*0.5*mGravity*dt2" << endl 
+    // << 3*mT_C_B.rowRange(0,3).colRange(0,3)*0.5*mGravity*dt2 << endl;
 
-    // cout << "mVel_*dt + T_B_C_.rowRange(0,3).colRange(0,3)*0.5*g_*dt2 + R_W_B*posInc" << endl << 
-    // 3*T_C_B_.rowRange(0,3).colRange(0,3)*0.5*g_*dt2 + R_W_B*posInc << endl;
+    // cout << "mVelocity*dt + mT_B_C.rowRange(0,3).colRange(0,3)*0.5*mGravity*dt2 + R_W_B*PosInc" << endl << 
+    // 3*mT_C_B.rowRange(0,3).colRange(0,3)*0.5*mGravity*dt2 + R_W_B*PosInc << endl;
 
     
     // cout << "t_W_B" << endl << t_W_B << endl;
@@ -1066,25 +1032,14 @@ bool Tracking::TrackWithMotionModel()
     // cout << "rotEstimate" << endl << rotEstimate << endl;
     // cout << "posEstimate" << endl << posEstimate << endl;
 
-    // cout << "T_W_B_current" << endl << T_W_B_current << endl;
+    // cout << "CurrentT_W_B" << endl << CurrentT_W_B << endl;
     // cout << "T_W_C_current" << endl << T_W_C_current << endl;
     
     // cout << "Last Pose " << endl << mLastFrame.mTcw << endl;
-    // cout << "Constant Velocity Guess" << endl << constVelModelPose << endl;
-    // cout << "Motion Model Guess" << endl << motionModelPose << endl;
+    // cout << "Motion Model Guess" << endl << motionModelGuess << endl;
 
-    // if(dt > 0.1)
-    // {
-    //     printf("Took too long, using const vel model: %f\n",dt);
-    //     mCurrentFrame.SetPose(constVelModelPose);
-    // }
-    // else{
-    //     mCurrentFrame.SetPose(motionModelPose);
-    // }
-
-    mCurrentFrame.SetPose(motionModelPose);
+    mCurrentFrame.SetPose(motionModelGuess);
     
-
     fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
 
     // Project points seen in previous frame
@@ -1092,7 +1047,7 @@ bool Tracking::TrackWithMotionModel()
     if(mSensor!=System::STEREO)
         th=15; 
     else
-        th=7; // 7;
+        th=7;
 
     int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);
 
@@ -1109,29 +1064,9 @@ bool Tracking::TrackWithMotionModel()
     {
         printf("[WARNING] Motion Model Failed Line: %d\n", __LINE__);
         cout << "delta t " << dt << endl;
-        cout << "mVel_" << endl << mVel_ << endl;
-
-        // cout << "posInc" << endl << posInc << endl;
-
-        // cout << "R_W_B*posInc" << endl << R_W_B*posInc << endl;
-
-
-        // cout << "mVel_*dt + T_B_C_.rowRange(0,3).colRange(0,3)*0.5*g_*dt*dt + R_W_B*posInc" << endl << 
-        // mVel_*dt + T_C_B_.rowRange(0,3).colRange(0,3)*0.5*g_*dt*dt + R_W_B*posInc << endl;
-
-        // cout << "Gravity Influence" << endl << T_C_B_.rowRange(0,3).colRange(0,3)*0.5*g_*dt*dt << endl;
-
-        // cout << "t_W_B" << endl << t_W_B << endl;
-
-        // cout << "rotEstimate" << endl << rotEstimate << endl;
-        // cout << "posEstimate" << endl << posEstimate << endl;
-
-        // cout << "T_W_B_current" << endl << T_W_B_current << endl;
-        // cout << "T_W_C_current" << endl << T_W_C_current << endl;
-        
+        cout << "mVelocity" << endl << mVelocity << endl;        
         cout << "Last Pose " << endl << mLastFrame.mTcw << endl;
-        cout << "Constant Velocity Guess" << endl << constVelModelPose << endl;
-        cout << "Motion Model Guess" << endl << motionModelPose << endl;
+        cout << "Motion Model Guess" << endl << motionModelGuess << endl;
         return false;
     }
 
@@ -1183,29 +1118,9 @@ bool Tracking::TrackWithMotionModel()
     {
         printf("[WARNING] Motion Model Failed Line: %d Map Matches: %d\n", __LINE__,nmatchesMap);
         cout << "delta t " << dt << endl;
-        cout << "mVel_*dt" << endl << mVel_*dt << endl;
-
-        // cout << "posInc" << endl << posInc << endl;
-
-        // cout << "R_W_B*posInc" << endl << R_W_B*posInc << endl;
-
-
-        // cout << "mVel_*dt + T_B_C_.rowRange(0,3).colRange(0,3)*0.5*g_*dt*dt + R_W_B*posInc" << endl << 
-        // mVel_*dt + T_C_B_.rowRange(0,3).colRange(0,3)*0.5*g_*dt*dt + R_W_B*posInc << endl;
-
-        // cout << "Gravity Influence" << endl << T_C_B_.rowRange(0,3).colRange(0,3)*0.5*g_*dt*dt << endl;
-
-        // cout << "t_W_B" << endl << t_W_B << endl;
-
-        // cout << "rotEstimate" << endl << rotEstimate << endl;
-        // cout << "posEstimate" << endl << posEstimate << endl;
-
-        // cout << "T_W_B_current" << endl << T_W_B_current << endl;
-        // cout << "T_W_C_current" << endl << T_W_C_current << endl;
-        
+        cout << "mVelocity*dt" << endl << mVelocity*dt << endl;
         cout << "Last Pose " << endl << mLastFrame.mTcw << endl;
-        cout << "Constant Velocity Guess" << endl << constVelModelPose << endl;
-        cout << "Motion Model Guess" << endl << motionModelPose << endl;
+        cout << "Motion Model Guess" << endl << motionModelGuess << endl;
         return false;
     }
 }

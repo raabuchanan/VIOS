@@ -80,26 +80,11 @@ RIGHT.P:  !!opencv-matrix
    dt: d
    data: [471.547836, 0.000000, 387.789700, -51.817399, 0.000000, 471.547836, 241.582283, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000]
 
+# Transform from right camrea to left camera in right camera's frame
+# T_RIGHT_LEFT unkown
 
-
-
-T_c0_fcuimu: !!opencv-matrix
-   rows: 4
-   cols: 4
-   dt: d
-   data: [1, 0, 0, 0, 
-          0, 1, 0, 0,
-           0, 0, 1, 0,
-           0.0, 0.0, 0.0, 1.0]
-
-T_c0_imu0: !!opencv-matrix
-   rows: 4
-   cols: 4
-   dt: d
-   data: [1, 0, 0, 0, 
-          0, 1, 0, 0,
-           0, 0, 1, 0,
-           0.0, 0.0, 0.0, 1.0]
+# Transform from left camera to imu in left camera's frame
+# T_LEFT_IMU unkown
 
 #--------------------------------------------------------------------------------------------
 # ORB Parameters

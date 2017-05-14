@@ -20,16 +20,17 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <Eigen/Core>
 #include <opencv2/core/eigen.hpp>
-
+#include "Manifold.h"
 #include <Eigen/Dense>
 
 #include "ros/ros.h"
 #include "geometry_msgs/PoseStamped.h"
 
 #include "Tracking.h"
-#include "Manifold.h"
 
-
+// Gravity in Zurich, Switzerland
+// https://www.metas.ch/metas/en/home/dok/gravitationszonen.html
+#define GRAVITATIONAL_ACCELERATION -9.80740
 
 using namespace std;
 
@@ -38,55 +39,44 @@ namespace ORB_SLAM2
 
 class Tracking;
 
-// Raw IMU measurement in Body frame
-struct IMUMeas
+// Raw IMU measurements in Body frame
+struct ImuMeasurement
 {
-	uint64_t time_stamp; // in nsec
-	Eigen::Vector3d ang_vel;
-	Eigen::Vector3d lin_acc;
+    uint64_t TimeStamp;  // in nsec
+    Eigen::Vector3d AngularVelocity;
+    Eigen::Vector3d LinearAcceleration;
 };
 
 // In world frame
-struct IMUData
+struct MotionIncrement
 {
-	Eigen::Matrix3d R_WB;
-	Eigen::Vector3d pos;
-	Eigen::Vector3d vel;
+    Eigen::Matrix3d dR_W_B;
+    Eigen::Vector3d dPosition;
+    Eigen::Vector3d dVelocity;
 };
 
 class MotionModel
 {
 public:
 	MotionModel(const string &strSettingPath);
-	void ProcessIMUMeas();
-	void setTracker(Tracking* pTracking_);
-	void Run();
-	void NewMeasurement(struct IMUMeas* new_meas);
-	void GetMotionModel(cv::Mat& rot, cv::Mat& pos, cv::Mat& vel, float& dt_total, float& dt2_total);
+	void IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement);
+	void SetTracker(Tracking* pTracking);
+	void NewMeasurement(struct ImuMeasurement* NewMeasurement);
+	void GetMotionModel(cv::Mat& dR, cv::Mat& dPos, cv::Mat& dVel, float& dTimeSum, float& dTime2Sum);
 
 private:
-	double gyro_noise_density_; 		// [ rad / s / sqrt(Hz) ]   ( gyro "white noise" )
-	double gyro_rand_walk_;  		// [ rad / s^2 / sqrt(Hz) ] ( gyro bias diffusion )
-	double acc_noise_density_;		// [ m / s^2 / sqrt(Hz) ]   ( accel "white noise" )
-	double acc_rand_walk_;   		// [ m / s^3 / sqrt(Hz) ].  ( accel bias diffusion )
-	struct IMUMeas ms_; //measurement state
-	struct IMUData ds_; //data state
-	Tracking* mpTracker_;
-	bool new_meas_;
-	double dt_sum_;
-	double dt2_sum_;
-	Eigen::Vector3d eta_gd_;
-	Eigen::Vector3d eta_ad_;
-	Eigen::Vector3d b_g_;
-	Eigen::Vector3d b_a_;
-	Eigen::Vector3d g;
-	void sendToROS();
-	void printPose();
-	uint64_t last_time_;
-	int init_count;
 	void ResetIntegration();
-	Eigen::Vector3d g_;
 
+	struct ImuMeasurement mCurrentMeasurement; //measurement state
+	struct MotionIncrement mCurrentMotion; //data state
+	Tracking* mpTracker;
+	double mdTimeSum;
+	double mdTime2Sum;
+	Eigen::Vector3d mAccelBias;
+	Eigen::Vector3d mGyroBias;
+	Eigen::Vector3d mGravity;
+	uint64_t mLastTime;
+	int mInitCount;
 };
 
 } //namespace ORB_SLAM

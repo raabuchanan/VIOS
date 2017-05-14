@@ -429,9 +429,6 @@ void LoopClosing::CorrectLoop()
         usleep(1000);
     }
 
-    // Stop integration of velocity
-    mpTracker->ClosingLoop_ = true;
-
     // Ensure current keyframe is updated
     mpCurrentKF->UpdateConnections();
 
@@ -703,6 +700,9 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
                 lpKFtoCheck.pop_front();
             }
 
+            // Stop integration of velocity
+            mpTracker->mbClosingLoop = true;
+
             // Correct MapPoints
             const vector<MapPoint*> vpMPs = mpMap->GetAllMapPoints();
 
@@ -744,7 +744,7 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
 
             mpLocalMapper->Release();
 
-            mpTracker->ClosingLoop_ = false;
+            mpTracker->mbClosingLoop = false;
 
             cout << "Map updated!" << endl;
         }

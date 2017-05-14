@@ -119,14 +119,8 @@ public:
 
     void Reset();
 
-    // My additions
-    // Camera Velocity
-    cv::Mat mVel_;
-    cv::Mat T_C_B_, T_B_C_;
-    
-    cv::Mat LastTwc_;
-
-    bool ClosingLoop_;
+    // VIOS
+    bool mbClosingLoop;
 
 protected:
 
@@ -221,16 +215,19 @@ protected:
     unsigned int mnLastKeyFrameId;
     unsigned int mnLastRelocFrameId;
 
-    //Motion Model
-    cv::Mat mVelocity;
-    cv::Mat tempVel;
-
     //Color order (true RGB, false BGR, ignored if grayscale)
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
 
-    cv::Mat g_;
+
+    // VIOS
+    cv::Mat mVelocity;
+    cv::Mat mGravity;
+    cv::Mat mT_C_B, mT_B_C, mR_C_B;
+    cv::Mat mLastTwc;
+    cv::Mat mH;
+    cv::Mat mV;
 };
 
 } //namespace ORB_SLAM
