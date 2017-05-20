@@ -36,12 +36,12 @@ First, open a terminal with Ctrl+Alt+T and execute:
 roscore
 ```
 
-Currently I have only tested on the [EuRoC Dataset](http://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets). Download one of the .bag files to any directoy and play it with:
+Currently I have only tested on the [EuRoC Dataset](http://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets). Download one of the .bag files to any directoy and in another terminal play it with:
 ```
 rosbag play <bag file name>.bag
 ```
 
-Run VIOS:
+Run VIOS in a third terminal:
 ```
 rosrun VIOS Stereo Vocabulary/ORBvoc.txt Settings/EuRoC.yaml true
 ```

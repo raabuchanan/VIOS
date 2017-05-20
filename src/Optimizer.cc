@@ -271,8 +271,8 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     vnIndexEdgeStereo.reserve(N);
 
     const float deltaMono = sqrt(5.991);
+    //const float deltaStereo = sqrt(7.815);
     const float deltaStereo = sqrt(7.815);
-    //const float deltaStereo = sqrt(20);
 
     {
     unique_lock<mutex> lock(MapPoint::mGlobalMutex);
@@ -368,7 +368,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
     const float chi2Mono[4]={5.991,5.991,5.991,5.991};
     //const float chi2Stereo[4]={7.815,7.815,7.815, 7.815};
-    const float chi2Stereo[4]={4,4,4,4}; // current v23 used 2
+    const float chi2Stereo[4]={3,3,3,3};
     const int its[4]={10,10,10,10};    
 
     int nBad=0;

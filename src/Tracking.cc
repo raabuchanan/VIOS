@@ -117,15 +117,17 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
     int fMinThFAST = fSettings["ORBextractor.minThFAST"];
 
-    mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+    bool _mbAdaptiveFeatures = true;
+
+    mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST, _mbAdaptiveFeatures);
 
     if(sensor==System::STEREO){
-        mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST, _mbAdaptiveFeatures);
         cout << "Baseline: " << mbf << endl;
     }
 
     if(sensor==System::MONOCULAR)
-        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST, _mbAdaptiveFeatures);
 
     cout << endl  << "ORB Extractor Parameters: " << endl;
     cout << "- Number of Features: " << nFeatures << endl;
@@ -152,47 +154,11 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     mGravity = cv::Mat::zeros(3,1,CV_32F);
     mGravity.at<float>(0,2) = GRAVITATIONAL_ACCELERATION;
 
-    Eigen::Matrix4d T_C_B, T_B_C;
-    // // fcu my dataset
-    // T_C_B << -0.01608348181631905, -0.9997945183852488, 0.012338663601662525, 0.06790925527780403, 
-    //       -0.39884506982516615, -0.004900808655335959, -0.9170052302744433, 0.011256054951169886,
-    //        0.9168772719883644, -0.019669852092342732, -0.39868429242928904, -0.17008764541314472,
-    //        0.0, 0.0, 0.0, 1.0;
+    fSettings["T_LEFT_IMU"] >> mT_C_B;
 
-    // // imu0 my dataset
-    // T_C_B << -0.9999905032681178, 0.002951493681203541, -0.0032065649263243443, 0.03826150250561798,
-    //       -0.0029601719116817806, -0.999991960070219, 0.0027050281283897666, -0.009637506816586773,
-    //       -0.0031985552723390776, 0.002714494422890786, 0.9999912003433822, -0.005788228045996118,
-    //        0.0, 0.0, 0.0, 1.0;
-
-   // imu0 euroc that I calculated
-   T_C_B << 0.01476960368055319, 0.9996668546037443, -0.02116692263358451, 0.06610086169028019,
-         -0.99986528036748, 0.01491752462460677, 0.006847523255539449, -0.013698980112073279,
-         0.0071610001243047556, 0.02106293582886804, 0.9997525057790498, -0.0007667891785872767,
-         0.0, 0.0, 0.0, 1.0;
-
-
-   // imu0 euroc that is given
-   // T_C_B << 0.0148655429818, -0.999880929698, 0.00414029679422, -0.0216401454975,
-   //       0.999557249008, 0.0149672133247, 0.025715529948, -0.064676986768,
-   //      -0.0257744366974, 0.00375618835797, 0.999660727178, 0.00981073058949,
-   //       0.0, 0.0, 0.0, 1.0;
-
-
-    // // using for SERVO for now
-    // T_C_B << 1,0,0,0,
-    //         0,1,0,0,
-    //         0,0,1,0,
-    //         0,0,0,1;
-
-    cv::eigen2cv(T_C_B,mT_C_B);
     mT_C_B.convertTo(mT_C_B, CV_32F);
 
-    T_B_C = T_C_B.inverse();
-    cv::eigen2cv(T_B_C,mT_B_C);
-    mT_B_C.convertTo(mT_B_C, CV_32F);
-
-
+    mT_B_C = mT_C_B.inv();
     mR_C_B = mT_C_B.rowRange(0,3).colRange(0,3);
 
     mV= cv::Mat::zeros(1,4, CV_32F);
@@ -486,7 +452,9 @@ void Tracking::Track()
         else
         {
             mState=LOST;
-            //cout << "LOST" <<endl;
+            mpORBextractorLeft->ChangeNFeatures(1200);
+            mpORBextractorRight->ChangeNFeatures(1200);
+            cout << "LOST!" <<endl;
         }
 
         // Update drawer
@@ -500,13 +468,13 @@ void Tracking::Track()
             if(!mLastFrame.mTcw.empty())
             {
                 //Don't update velocity if the loop is being closed
-                if(!mbClosingLoop){
+                // if(!mbClosingLoop){
                     float dt = mCurrentFrame.mTimeStamp - mLastFrame.mTimeStamp;
 
                     mVelocity = (mCurrentFrame.GetCameraCenter() - mLastFrame.GetCameraCenter()) / dt;
-                }else{
-                    cout <<"Not updating velocity while closing loop" << endl;
-                }
+                // }else{
+                //     cout <<"Not updating velocity while closing loop." << endl;
+                // }
             }
             else
             {
@@ -996,9 +964,16 @@ bool Tracking::TrackWithMotionModel()
 
     mpMotionModeler->GetMotionModel(RotInc,PosInc,VelInc,dt, dt2);
 
+    double angleAxisTheta = acos((trace(RotInc)[0] - 1)/2);
+
+    //cout << "Speed Norm: " << norm(VelInc) << " Rotation Norm: " << angleAxisTheta << endl;
+
+    mpORBextractorLeft->ChangeNFeatures(450*norm(VelInc) + 1500*angleAxisTheta + 700);
+    mpORBextractorRight->ChangeNFeatures(450*norm(VelInc) + 1500*angleAxisTheta + 700);
+
     // Estimated Pose from world to body in world frame
     cv::Mat rotEstimate = R_W_B*RotInc;
-    //cv::Mat velEstimate = mVelocity + R_W_B*VelInc + mT_C_B.rowRange(0,3).colRange(0,3)*mGravity*dt;
+    //cv::Mat velEstimate = mVelocity + R_W_B*VelInc + mR_C_B*mGravity*dt;
     cv::Mat posEstimate = t_W_B + mVelocity*dt + mR_C_B*0.5*mGravity*dt2 + R_W_B*PosInc;
 
     cv::Mat CurrentT_W_B;
@@ -1064,9 +1039,9 @@ bool Tracking::TrackWithMotionModel()
     {
         printf("[WARNING] Motion Model Failed Line: %d\n", __LINE__);
         cout << "delta t " << dt << endl;
-        cout << "mVelocity" << endl << mVelocity << endl;        
-        cout << "Last Pose " << endl << mLastFrame.mTcw << endl;
-        cout << "Motion Model Guess" << endl << motionModelGuess << endl;
+        // cout << "mVelocity" << endl << mVelocity << endl;        
+        // cout << "Last Pose " << endl << mLastFrame.mTcw << endl;
+        // cout << "Motion Model Guess" << endl << motionModelGuess << endl;
         return false;
     }
 
@@ -1118,9 +1093,9 @@ bool Tracking::TrackWithMotionModel()
     {
         printf("[WARNING] Motion Model Failed Line: %d Map Matches: %d\n", __LINE__,nmatchesMap);
         cout << "delta t " << dt << endl;
-        cout << "mVelocity*dt" << endl << mVelocity*dt << endl;
-        cout << "Last Pose " << endl << mLastFrame.mTcw << endl;
-        cout << "Motion Model Guess" << endl << motionModelGuess << endl;
+        // cout << "mVelocity*dt" << endl << mVelocity*dt << endl;
+        // cout << "Last Pose " << endl << mLastFrame.mTcw << endl;
+        // cout << "Motion Model Guess" << endl << motionModelGuess << endl;
         return false;
     }
 }

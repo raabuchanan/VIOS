@@ -49,7 +49,7 @@ public:
     enum {HARRIS_SCORE=0, FAST_SCORE=1 };
 
     ORBextractor(int nfeatures, float scaleFactor, int nlevels,
-                 int iniThFAST, int minThFAST);
+                 int iniThFAST, int minThFAST, bool mbAdaptiveFeatures);
 
     ~ORBextractor(){}
 
@@ -59,6 +59,8 @@ public:
     void operator()( cv::InputArray image, cv::InputArray mask,
       std::vector<cv::KeyPoint>& keypoints,
       cv::OutputArray descriptors);
+
+    void ChangeNFeatures(int newNFeatures);
 
     int inline GetLevels(){
         return nlevels;}
@@ -99,6 +101,8 @@ protected:
     int nlevels;
     int iniThFAST;
     int minThFAST;
+
+    bool mbAdaptiveFeatures;
 
     std::vector<int> mnFeaturesPerLevel;
 

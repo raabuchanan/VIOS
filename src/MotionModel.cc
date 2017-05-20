@@ -73,19 +73,19 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
                    NewMeasurement->TimeStamp, mLastTime);
         }
 
-        mLastTime = NewMeasurement->TimeStamp;
+        if(mdTimeSum + dt > 0.15){
+            cout << "Resetting motion model" << endl;
+            ResetIntegration();
+        }
 
-        // cout << "NewMeasurement->LinearAcceleration - mAccelBias = " <<
-        // endl << NewMeasurement->LinearAcceleration - mAccelBias << endl;
-        // cout << "NewMeasurement->AngularVelocity - mAccelBias = " << endl
-        // << NewMeasurement->AngularVelocity - mGyroBias << endl;
+        mLastTime = NewMeasurement->TimeStamp;
 
         Eigen::Matrix3d dR =
             ExpMap((NewMeasurement->AngularVelocity - mGyroBias) * dt);
 
-        // mCurrentMotion.dVelocity +=
-        //     mCurrentMotion.dR_W_B *
-        //     (NewMeasurement->LinearAcceleration - mAccelBias) * dt;
+        mCurrentMotion.dVelocity +=
+            mCurrentMotion.dR_W_B *
+            (NewMeasurement->LinearAcceleration - mAccelBias) * dt;
 
         mCurrentMotion.dPosition +=
             3 * mCurrentMotion.dR_W_B *
@@ -116,11 +116,11 @@ void MotionModel::GetMotionModel(cv::Mat& rotInc, cv::Mat& posInc,
 {
     cv::eigen2cv(mCurrentMotion.dR_W_B, rotInc);
     cv::eigen2cv(mCurrentMotion.dPosition, posInc);
-    //cv::eigen2cv(mCurrentMotion.dVelocity, velInc);
+    cv::eigen2cv(mCurrentMotion.dVelocity, velInc);
 
     rotInc.convertTo(rotInc, CV_32F);
     posInc.convertTo(posInc, CV_32F);
-    //velInc.convertTo(velInc, CV_32F);
+    velInc.convertTo(velInc, CV_32F);
 
     timeInc = mdTimeSum;
     time2Inc = mdTime2Sum;
@@ -131,7 +131,7 @@ void MotionModel::GetMotionModel(cv::Mat& rotInc, cv::Mat& posInc,
 void MotionModel::ResetIntegration()
 {
     mCurrentMotion.dPosition = Eigen::Vector3d::Zero(3);
-    //mCurrentMotion.dVelocity = Eigen::Vector3d::Zero(3);
+    mCurrentMotion.dVelocity = Eigen::Vector3d::Zero(3);
     mCurrentMotion.dR_W_B = Eigen::Matrix3d::Identity(3, 3);
     mdTimeSum = 0;
     mdTime2Sum = 0;

@@ -59,7 +59,7 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <vector>
-
+#include <iostream>
 #include "ORBextractor.h"
 
 
@@ -408,9 +408,9 @@ static int bit_pattern_31_[256*4] =
 };
 
 ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
-         int _iniThFAST, int _minThFAST):
+         int _iniThFAST, int _minThFAST, bool _mbAdaptiveFeatures):
     nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels),
-    iniThFAST(_iniThFAST), minThFAST(_minThFAST)
+    iniThFAST(_iniThFAST), minThFAST(_minThFAST), mbAdaptiveFeatures(_mbAdaptiveFeatures)
 {
     mvScaleFactor.resize(nlevels);
     mvLevelSigma2.resize(nlevels);
@@ -1128,6 +1128,35 @@ void ORBextractor::ComputePyramid(cv::Mat image)
                            BORDER_REFLECT_101);            
         }
     }
+
+}
+
+void ORBextractor::ChangeNFeatures(int newNFeatures){
+
+    if(!mbAdaptiveFeatures || abs(newNFeatures - nfeatures) < 50)
+        return;
+
+    if(newNFeatures > 1200){
+        nfeatures = 1200;
+    }else if(newNFeatures < 800){
+        nfeatures = 800;
+    }else{
+        nfeatures = newNFeatures;
+    }
+
+    cout << "Setting number of features to: " << nfeatures << endl;
+
+    // float factor = 1.0f / scaleFactor;
+    // float nDesiredFeaturesPerScale = nfeatures*(1 - factor)/(1 - (float)pow((double)factor, (double)nlevels));
+
+    // int sumFeatures = 0;
+    // for( int level = 0; level < nlevels-1; level++ )
+    // {
+    //     mnFeaturesPerLevel[level] = cvRound(nDesiredFeaturesPerScale);
+    //     sumFeatures += mnFeaturesPerLevel[level];
+    //     nDesiredFeaturesPerScale *= factor;
+    // }
+    // mnFeaturesPerLevel[nlevels-1] = std::max(nfeatures - sumFeatures, 0);
 
 }
 

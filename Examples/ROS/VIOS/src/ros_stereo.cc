@@ -70,10 +70,13 @@ int main(int argc, char **argv)
         cerr << "Example: rosrun VIOS Stereo Vocabulary/ORBvoc.txt Settings/EuRoC.yaml true " << endl;
         ros::shutdown();
         return 1;
-    }    
+    }
+
+    bool visualization;
+    istringstream(argv[3]) >> std::boolalpha >> visualization;    
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,argv[3]);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,visualization);
 
     ros::NodeHandle nh;
 
@@ -140,19 +143,19 @@ int main(int argc, char **argv)
 
     if(USE_BODY_FRAME)
     {
-        cv::Mat T_L_B, T_B_V;
+        cv::Mat T_C_B, T_B_V;
 
-        fsSettings["T_LEFT_IMU"] >> T_L_B;
+        fsSettings["T_LEFT_IMU"] >> T_C_B;
         fsSettings["T_IMU_VICON"] >> T_B_V;
 
-        if (T_L_B.empty() || T_B_V.empty())
+        if (T_C_B.empty() || T_B_V.empty())
         {
             cerr << "ERROR: Inertial extrinsic transform missing!" << endl;
             return -1;
         }
 
-        image_grb.mT_C_B = T_L_B;
-        image_grb.mT_B_C = T_L_B.inv();
+        image_grb.mT_C_B = T_C_B;
+        image_grb.mT_B_C = T_C_B.inv();
         image_grb.mT_B_V = T_B_V;
 
 
@@ -216,34 +219,36 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
         T_W_C = mpSLAM->TrackStereo(cv_ptrLeft->image,cv_ptrRight->image,cv_ptrLeft->header.stamp.toSec());
     }
 
-    cv::Mat T_W_V;
-    geometry_msgs::TransformStamped msg;
-
-    if (USE_BODY_FRAME)
+    if(!T_W_C.empty())
     {
-        T_W_V = mT_B_V * mT_B_C * T_W_C.inv();
+        cv::Mat T_W_V;
+        geometry_msgs::TransformStamped msg;
+
+        if (USE_BODY_FRAME)
+        {
+            T_W_V = mT_B_V * mT_B_C * T_W_C.inv();
+        }
+        else
+        {
+            T_W_V = T_W_C.inv();
+        }
+
+        msg.header = msgLeft->header;
+        msg.header.frame_id = "world";
+        msg.child_frame_id = "cam0";
+
+        msg.transform.translation.x = T_W_V.at<float>(0,3);
+        msg.transform.translation.y = T_W_V.at<float>(1,3);
+        msg.transform.translation.z = T_W_V.at<float>(2,3);
+
+        // TODO Quaternion rotations
+        msg.transform.rotation.x = 0;
+        msg.transform.rotation.y = 0;
+        msg.transform.rotation.z = 0;
+        msg.transform.rotation.w = 1;
+
+        mPosePub.publish(msg);
     }
-    else
-    {
-        T_W_V = T_W_C.inv();
-    }    
-
-    msg.header = msgLeft->header;
-    msg.header.frame_id = "world";
-    msg.child_frame_id = "cam0";
-
-    msg.transform.translation.x = T_W_V.at<float>(0,3);
-    msg.transform.translation.y = T_W_V.at<float>(1,3);
-    msg.transform.translation.z = T_W_V.at<float>(2,3);
-
-    // TODO Quaternion rotations
-    msg.transform.rotation.x = 0;
-    msg.transform.rotation.y = 0;
-    msg.transform.rotation.z = 0;
-    msg.transform.rotation.w = 1;
-
-    mPosePub.publish(msg);
-
 }
 
 
