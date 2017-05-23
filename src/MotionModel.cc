@@ -73,7 +73,7 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
                    NewMeasurement->TimeStamp, mLastTime);
         }
 
-        if(mdTimeSum + dt > 0.15){
+        if(mdTimeSum + dt > 0.1){
             cout << "Resetting motion model" << endl;
             ResetIntegration();
         }

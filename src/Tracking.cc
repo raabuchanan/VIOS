@@ -365,9 +365,9 @@ void Tracking::Track()
                     if(!mVelocity.empty())
                     {
                         bOK = TrackWithMotionModel();
-                        if(!bOK){
-                            motionModelFailed = true;
-                        }
+                        // if(!bOK){
+                        //     motionModelFailed = true;
+                        // }
                     }
                     else
                     {
@@ -444,10 +444,10 @@ void Tracking::Track()
         {
             mState = OK;
 
-            if (motionModelFailed)
-            {
-                cout << "mCurrentFrame" << endl << mCurrentFrame.mTcw << endl;
-            }
+            // if (motionModelFailed)
+            // {
+            //     cout << "mCurrentFrame" << endl << mCurrentFrame.mTcw << endl;
+            // }
         }
         else
         {
@@ -968,8 +968,12 @@ bool Tracking::TrackWithMotionModel()
 
     //cout << "Speed Norm: " << norm(VelInc) << " Rotation Norm: " << angleAxisTheta << endl;
 
-    mpORBextractorLeft->ChangeNFeatures(450*norm(VelInc) + 1500*angleAxisTheta + 700);
-    mpORBextractorRight->ChangeNFeatures(450*norm(VelInc) + 1500*angleAxisTheta + 700);
+    mpORBextractorLeft->ChangeNFeatures(700*norm(VelInc) + 2000*angleAxisTheta + 500);
+    mpORBextractorRight->ChangeNFeatures(700*norm(VelInc) + 2000*angleAxisTheta + 500);
+
+    // V2_02
+    // mpORBextractorLeft->ChangeNFeatures(500*norm(VelInc) + 1500*angleAxisTheta + 600);
+    // mpORBextractorRight->ChangeNFeatures(500*norm(VelInc) + 1500*angleAxisTheta + 600);
 
     // Estimated Pose from world to body in world frame
     cv::Mat rotEstimate = R_W_B*RotInc;
@@ -1022,7 +1026,7 @@ bool Tracking::TrackWithMotionModel()
     if(mSensor!=System::STEREO)
         th=15; 
     else
-        th=7;
+        th=7; // 7
 
     int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);
 

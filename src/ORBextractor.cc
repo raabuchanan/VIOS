@@ -1133,30 +1133,31 @@ void ORBextractor::ComputePyramid(cv::Mat image)
 
 void ORBextractor::ChangeNFeatures(int newNFeatures){
 
-    if(!mbAdaptiveFeatures || abs(newNFeatures - nfeatures) < 50)
+    if(!mbAdaptiveFeatures || abs(newNFeatures - nfeatures) < 100)
         return;
 
     if(newNFeatures > 1200){
+        if(nfeatures == 1200){
+            return;
+        }
         nfeatures = 1200;
-    }else if(newNFeatures < 800){
-        nfeatures = 800;
     }else{
         nfeatures = newNFeatures;
     }
 
     cout << "Setting number of features to: " << nfeatures << endl;
 
-    // float factor = 1.0f / scaleFactor;
-    // float nDesiredFeaturesPerScale = nfeatures*(1 - factor)/(1 - (float)pow((double)factor, (double)nlevels));
+    float factor = 1.0f / scaleFactor;
+    float nDesiredFeaturesPerScale = nfeatures*(1 - factor)/(1 - (float)pow((double)factor, (double)nlevels));
 
-    // int sumFeatures = 0;
-    // for( int level = 0; level < nlevels-1; level++ )
-    // {
-    //     mnFeaturesPerLevel[level] = cvRound(nDesiredFeaturesPerScale);
-    //     sumFeatures += mnFeaturesPerLevel[level];
-    //     nDesiredFeaturesPerScale *= factor;
-    // }
-    // mnFeaturesPerLevel[nlevels-1] = std::max(nfeatures - sumFeatures, 0);
+    int sumFeatures = 0;
+    for( int level = 0; level < nlevels-1; level++ )
+    {
+        mnFeaturesPerLevel[level] = cvRound(nDesiredFeaturesPerScale);
+        sumFeatures += mnFeaturesPerLevel[level];
+        nDesiredFeaturesPerScale *= factor;
+    }
+    mnFeaturesPerLevel[nlevels-1] = std::max(nfeatures - sumFeatures, 0);
 
 }
 
