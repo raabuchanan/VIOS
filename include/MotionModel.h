@@ -23,9 +23,6 @@
 #include "Manifold.h"
 #include <Eigen/Dense>
 
-#include "ros/ros.h"
-#include "geometry_msgs/PoseStamped.h"
-
 #include "Tracking.h"
 
 // Gravity in Zurich, Switzerland
