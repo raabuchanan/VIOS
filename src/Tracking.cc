@@ -972,8 +972,8 @@ bool Tracking::TrackWithMotionModel()
     // mpORBextractorRight->ChangeNFeatures(700*norm(VelInc) + 2000*angleAxisTheta + 500);
 
     // V2_02
-    mpORBextractorLeft->ChangeNFeatures(500*norm(VelInc) + 1500*angleAxisTheta + 600);
-    mpORBextractorRight->ChangeNFeatures(500*norm(VelInc) + 1500*angleAxisTheta + 600);
+    mpORBextractorLeft->ChangeNFeatures(200*norm(VelInc) + 1000*angleAxisTheta + 800);
+    mpORBextractorRight->ChangeNFeatures(200*norm(VelInc) + 1000*angleAxisTheta + 800);
 
     // Estimated Pose from world to body in world frame
     cv::Mat rotEstimate = R_W_B*RotInc;
