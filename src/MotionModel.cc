@@ -67,7 +67,7 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
         // cout << "mLastTime " << mLastTime << endl;
         // cout << "dt " << dt << endl;
 
-        if (abs(dt - 0.005) > 0.0001)
+        if (abs(dt - 0.002) > 0.0001)
         {
             printf("dt: %f this time: %ld last time: %ld\n", dt,
                    NewMeasurement->TimeStamp, mLastTime);
