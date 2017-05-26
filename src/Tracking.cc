@@ -968,12 +968,12 @@ bool Tracking::TrackWithMotionModel()
 
     //cout << "Speed Norm: " << norm(VelInc) << " Rotation Norm: " << angleAxisTheta << endl;
 
-    mpORBextractorLeft->ChangeNFeatures(700*norm(VelInc) + 2000*angleAxisTheta + 500);
-    mpORBextractorRight->ChangeNFeatures(700*norm(VelInc) + 2000*angleAxisTheta + 500);
+    // mpORBextractorLeft->ChangeNFeatures(700*norm(VelInc) + 2000*angleAxisTheta + 500);
+    // mpORBextractorRight->ChangeNFeatures(700*norm(VelInc) + 2000*angleAxisTheta + 500);
 
     // V2_02
-    // mpORBextractorLeft->ChangeNFeatures(500*norm(VelInc) + 1500*angleAxisTheta + 600);
-    // mpORBextractorRight->ChangeNFeatures(500*norm(VelInc) + 1500*angleAxisTheta + 600);
+    mpORBextractorLeft->ChangeNFeatures(500*norm(VelInc) + 1500*angleAxisTheta + 600);
+    mpORBextractorRight->ChangeNFeatures(500*norm(VelInc) + 1500*angleAxisTheta + 600);
 
     // Estimated Pose from world to body in world frame
     cv::Mat rotEstimate = R_W_B*RotInc;
