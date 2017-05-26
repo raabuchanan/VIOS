@@ -164,7 +164,7 @@ int main(int argc, char **argv)
         image_grb.mT_B_V.convertTo(image_grb.mT_B_V, CV_32F);
     }
 
-    ros::Subscriber imu_sub = nh.subscribe("/imu0",5,&ImuGrabber::GrabImu,&imu_grb);
+    ros::Subscriber imu_sub = nh.subscribe("/fcu/imu",5,&ImuGrabber::GrabImu,&imu_grb);
     message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/cam0/image_raw", 1);
     message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/cam1/image_raw", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
