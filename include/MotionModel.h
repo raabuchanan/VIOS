@@ -74,6 +74,8 @@ private:
 	Eigen::Vector3d mGravity;
 	uint64_t mLastTime;
 	int mInitCount;
+
+	Eigen::Matrix3d mR_B_C;
 };
 
 } //namespace ORB_SLAM

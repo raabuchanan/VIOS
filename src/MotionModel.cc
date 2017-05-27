@@ -39,6 +39,14 @@ MotionModel::MotionModel(const string& strSettingPath)
 
     mGravity = Eigen::Vector3d::Zero(3);
     mGravity(2) = GRAVITATIONAL_ACCELERATION;
+
+    cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
+    cv::Mat T_C_B;
+    fSettings["T_IMU_VICON"] >> T_C_B;
+
+    cv::cv2eigen(T_C_B.rowRange(0,3).colRange(0,3).t(), mR_B_C);
+
+
 }
 
 void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
@@ -46,7 +54,7 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
     if (mInitCount < 50)
     {
         mLastTime = NewMeasurement->TimeStamp;
-        mAccelBias += NewMeasurement->LinearAcceleration + mGravity;
+        mAccelBias += NewMeasurement->LinearAcceleration + mR_B_C * mGravity;
         mGyroBias += NewMeasurement->AngularVelocity;
         mInitCount++;
 
@@ -56,8 +64,14 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
             mGyroBias = mGyroBias / 50;
         }
 
-        // cout << "Accel Bias" << mAccelBias << endl;
-        // cout << "Vel Bias" << mGyroBias << endl;
+
+        // cout << "NewMeasurement->LinearAcceleration" << endl << NewMeasurement->LinearAcceleration << endl;
+        // cout << "NewMeasurement->AngularVelocity" << endl << NewMeasurement->AngularVelocity << endl;
+        // cout << "mR_B_C * mGravity" << endl << mR_B_C * mGravity << endl;
+        // cout << "mAccelBias" << endl << mAccelBias << endl;
+        // cout << "mGyroBias" << endl << mGyroBias << endl;
+
+
     }
     else
     {
@@ -79,6 +93,10 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
         }
 
         mLastTime = NewMeasurement->TimeStamp;
+
+        // cout << "NewMeasurement->AngularVelocity" << NewMeasurement->AngularVelocity << endl;
+        // cout << "NewMeasurement->LinearAcceleration" << NewMeasurement->LinearAcceleration << endl;
+
 
         Eigen::Matrix3d dR =
             ExpMap((NewMeasurement->AngularVelocity - mGyroBias) * dt);
