@@ -85,7 +85,7 @@ T_LEFT_IMU: !!opencv-matrix
    rows: 4
    cols: 4
    dt: d 
-   data: [1, 0, 0, 0,
+   data: [-1, 0, 0, 0,
           0, 1, 0, 0,
           0, 0, 1, 0,
           0, 0, 0, 1]
