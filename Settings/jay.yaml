@@ -1,0 +1,166 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+
+# Camera calibration and distortion parameters (OpenCV) 
+Camera.fx: 581.6902048650325
+Camera.fy: 581.6902048650325
+Camera.cx: 317.8283653259277
+Camera.cy: 236.9034442901611
+
+Camera.k1: 0.0
+Camera.k2: 0.0
+Camera.p1: 0.0
+Camera.p2: 0.0
+
+Camera.width: 640
+Camera.height: 480
+
+# Camera frames per second 
+Camera.fps: 30.0
+
+# stereo baseline times fx
+Camera.bf: 40.74501238103238
+
+# Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
+Camera.RGB: 1
+
+# Close/Far threshold. Baseline times.
+ThDepth: 35
+
+#--------------------------------------------------------------------------------------------
+# Stereo Rectification. Only if you need to pre-rectify the images.
+# Camera.fx, .fy, etc must be the same as in LEFT.P
+#--------------------------------------------------------------------------------------------
+LEFT.height: 480
+LEFT.width: 640
+LEFT.D: !!opencv-matrix
+   rows: 1
+   cols: 5
+   dt: d
+   data: [-0.005218005287768484, 0.018408804740798604, -0.0011349038061839213, -0.0011180351944604767, 0.0]
+LEFT.K: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [584.4665487892144, 0.0, 318.4051962134885, 0.0, 584.9405319245735, 237.5154252331157, 0.0, 0.0, 1.0]
+LEFT.R:  !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [0.9999997799175078, 0.0006533543942255796, -0.0001152951501788462,
+         -0.0006533203742534759, 0.999999743115023, 0.0002948599268339906,
+          0.0001154877685901323, -0.0002947845372698174, 0.9999999498823247]
+LEFT.P:  !!opencv-matrix
+   rows: 3
+   cols: 4
+   dt: d
+   data: [581.6902048650325, 0, 317.8283653259277, 0, 0, 581.6902048650325, 236.9034442901611, 0, 0, 0, 1, 0]
+
+RIGHT.height: 480
+RIGHT.width: 640
+RIGHT.D: !!opencv-matrix
+   rows: 1
+   cols: 5
+   dt: d
+   data: [-0.012532386026374933, 0.03162308078363152, -0.0007649971160108626, 0.0009016407913348022, 0.0]
+RIGHT.K: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [584.838582422331, 0.0, 320.2982615547681, 0.0, 585.1171795536744, 237.1046108632456, 0.0, 0.0, 1]
+RIGHT.R:  !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data:  [0.9999919174178922, 0.0005187879191408366, 0.003986973536695509,
+          -0.0005176124457171095, 0.9999998222736598, -0.0002958547017379645,
+          -0.003987126313950377, 0.0002937886033447086, 0.9999920082240723]
+RIGHT.P:  !!opencv-matrix
+   rows: 3
+   cols: 4
+   dt: d
+   data: [581.6902048650325, 0, 317.8283653259277, -40.74501238103238,
+          0, 581.6902048650325, 236.9034442901611, 0,
+          0, 0, 1, 0]
+
+# Transform from right camrea to left camera in right camera's frame
+T_RIGHT_LEFT: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data: [0.9999915750396129, 0.00013691214387062992, -0.004102572955599373, -0.07004533120095804,
+         -0.0001344985241866408, 0.9999998177367563, 0.0005885886493207501, -3.633896533204328e-05,
+          0.004102652792784961, -0.0005880319004768, 0.9999914111923875, -0.00027927113909952394,
+          0.0, 0.0, 0.0, 1.0]
+
+
+# Transform from left camera to imu in left camera's frame
+T_LEFT_IMU: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data: [0.9999793449567165, 0.0041245886190205945, -0.004929242199400364, -0.03216294994270111,
+         -0.004063736847355792, 0.9999161933878232, 0.012291958494931393, -0.013215367405749452,
+          0.0049795283684247, -0.012271673460841397, 0.99991230131832, 0.012282956052904956,
+          0.0, 0.0, 0.0, 1.0]
+
+# Transform from vicon to imu with respect to imu
+T_IMU_VICON: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d 
+   data: [0.13656832496450033, 0.9817305088265864, -0.13249264377874836, 0.0259709401930875,
+          0.4586593351912109, 0.05588416140558361, 0.8868531866921106, 0.052908415943769306,
+          0.8780550705157093, -0.18188504210925754, -0.44264785620012503, -0.0711647164888973,
+          0.0, 0.0, 0.0, 1.0]
+
+
+# fcu/imu
+   # data: [0.13656832496450033, 0.9817305088265864, -0.13249264377874836, 0.0259709401930875]
+   #       [0.4586593351912109, 0.05588416140558361, 0.8868531866921106, 0.052908415943769306]
+   #       [0.8780550705157093, -0.18188504210925754, -0.44264785620012503, -0.0711647164888973]
+   #       [0.0, 0.0, 0.0, 1.0]
+
+# imu0
+   # data: [0.9999793449567165, 0.0041245886190205945, -0.004929242199400364, -0.03216294994270111]
+   #       [-0.004063736847355792, 0.9999161933878232, 0.012291958494931393, -0.013215367405749452]
+   #       [0.0049795283684247, -0.012271673460841397, 0.99991230131832, 0.012282956052904956]
+   #       [0.0, 0.0, 0.0, 1.0]
+
+#--------------------------------------------------------------------------------------------
+# ORB Parameters
+#--------------------------------------------------------------------------------------------
+
+# ORB Extractor: Number of features per image
+ORBextractor.nFeatures: 1200
+
+# ORB Extractor: Scale factor between levels in the scale pyramid   
+ORBextractor.scaleFactor: 1.2
+
+# ORB Extractor: Number of levels in the scale pyramid  
+ORBextractor.nLevels: 8
+
+# ORB Extractor: Fast threshold
+# Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
+# Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
+# You can lower these values if your images have low contrast     
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
+
+#--------------------------------------------------------------------------------------------
+# Viewer Parameters
+#--------------------------------------------------------------------------------------------
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3
+Viewer.ViewpointX: 0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -1.8
+Viewer.ViewpointF: 500
+

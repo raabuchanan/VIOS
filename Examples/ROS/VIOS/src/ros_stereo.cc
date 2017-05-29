@@ -130,6 +130,11 @@ int main(int argc, char **argv)
                 cv::stereoRectify(K_l, D_l, K_r, D_r, cv::Size(cols_l, rows_l),
                                 T_R_L.rowRange(0, 3).colRange(0, 3),
                                 T_R_L.col(3).rowRange(0, 3), R_l, R_r, P_l, P_r, Q_);
+
+                cout << "R_l" << endl << R_l << endl;
+                cout << "R_r" << endl << R_r << endl;
+                cout << "P_l" << endl << P_l << endl;
+                cout << "P_r" << endl << P_r << endl;
             }
             cerr << "ERROR: Stereo extrinsic transform missing!"
                  << endl;
@@ -164,9 +169,9 @@ int main(int argc, char **argv)
         image_grb.mT_B_V.convertTo(image_grb.mT_B_V, CV_32F);
     }
 
-    ros::Subscriber imu_sub = nh.subscribe("/imu0",5,&ImuGrabber::GrabImu,&imu_grb);
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/cam0/image_raw", 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/cam1/image_raw", 1);
+    ros::Subscriber imu_sub = nh.subscribe("/imu/raw",5,&ImuGrabber::GrabImu,&imu_grb);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/infrared/infrared", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/infrared2/infrared2", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(5), left_sub,right_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo,&image_grb,_1,_2));
