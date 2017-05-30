@@ -117,7 +117,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
     int fMinThFAST = fSettings["ORBextractor.minThFAST"];
 
-    bool _mbAdaptiveFeatures = false;
+    bool _mbAdaptiveFeatures = true;
 
     mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST, _mbAdaptiveFeatures);
 
@@ -161,7 +161,10 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     mT_C_B.convertTo(mT_C_B, CV_32F);
 
     mT_I_C = mT_C_I.inv();
+    mT_B_C = mT_C_B.inv();
+
     mR_I_C = mT_I_C.rowRange(0,3).colRange(0,3);
+    mR_C_I = mR_I_C.t();
 
     mR_C_B = mT_C_B.rowRange(0,3).colRange(0,3);
 
@@ -963,9 +966,9 @@ bool Tracking::TrackWithMotionModel()
     float dt, dt2;
 
     //cv::Mat T_W_C_last = mLastFrame.GetPoseWorldFrame();
-    cv::Mat LastT_W_B = mLastFrame.GetPoseWorldFrame()*mT_C_I; // World to body in the world frame
-    cv::Mat R_W_B = LastT_W_B.rowRange(0,3).colRange(0,3);
-    cv::Mat t_W_B = LastT_W_B.rowRange(0,3).col(3);
+    cv::Mat LastT_W_I = mLastFrame.GetPoseWorldFrame() * mT_C_I; // World to body in the world frame
+    cv::Mat R_W_I = LastT_W_I.rowRange(0,3).colRange(0,3);
+    cv::Mat t_W_I = LastT_W_I.rowRange(0,3).col(3);
 
     cv::Mat RotInc(3,3,CV_32F);
     cv::Mat PosInc(3,1,CV_32F);
@@ -993,9 +996,9 @@ bool Tracking::TrackWithMotionModel()
     }
 
     // Estimated Pose from world to body in world frame
-    cv::Mat rotEstimate = R_W_B*RotInc;
-    //cv::Mat velEstimate = mVelocity + R_W_B*VelInc + mR_C_B*mGravity_B*dt;
-    cv::Mat posEstimate = t_W_B + mVelocity*dt + 0.5*mGravity_I*dt2 + R_W_B*PosInc;
+    cv::Mat rotEstimate = R_W_I*RotInc;
+    //cv::Mat velEstimate = mVelocity + R_W_I*VelInc + mR_C_B*mGravity_B*dt;
+    cv::Mat posEstimate = t_W_I + mR_I_C*mVelocity*dt + 0.5*mGravity_I*dt2 + R_W_I*PosInc;
 
     cv::Mat CurrentT_W_I;
 
@@ -1009,16 +1012,15 @@ bool Tracking::TrackWithMotionModel()
 
 
     // cout << "delta t " << dt << endl;
-    // cout << "delta t2 " << dt2 << endl;
     // cout << "RotInc" << endl << RotInc << endl;
     // cout << "PosInc" << endl << PosInc << endl;
-    // cout << "R_W_B*PosInc" << endl << R_W_B*PosInc << endl;
+    // cout << "R_W_I*PosInc" << endl << R_W_I*PosInc << endl;
 
     // cout << "0.5*mGravity_I*dt2" << endl << 0.5*mGravity_I*dt2 << endl;
 
-    // cout << "mVelocity*dt" << endl << mVelocity*dt << endl;
+    // cout << "mR_I_C*mVelocity*dt" << endl << mR_I_C*mVelocity*dt << endl;
 
-    // cout << "t_W_B" << endl << t_W_B << endl;
+    // cout << "t_W_I" << endl << t_W_I << endl;
 
     // cout << "rotEstimate" << endl << rotEstimate << endl;
     // cout << "posEstimate" << endl << posEstimate << endl;
@@ -1054,15 +1056,13 @@ bool Tracking::TrackWithMotionModel()
         cout << "delta t " << dt << endl;
         cout << "RotInc" << endl << RotInc << endl;
         cout << "PosInc" << endl << PosInc << endl;
-        cout << "R_W_B*PosInc" << endl << R_W_B*PosInc << endl;
+        cout << "R_W_I*PosInc" << endl << R_W_I*PosInc << endl;
 
         cout << "0.5*mGravity_I*dt2" << endl << 0.5*mGravity_I*dt2 << endl;
 
-        cout << "mVelocity*dt" << endl << mVelocity*dt << endl;
+        cout << "mR_I_C*mVelocity*dt" << endl << mR_I_C*mVelocity*dt << endl;
 
-        cout << "t_W_B" << endl << t_W_B << endl;
-
-        cout << "norm(VelInc) " << norm(VelInc) << "angleAxisTheta " << angleAxisTheta << endl;
+        cout << "t_W_I" << endl << t_W_I << endl;
 
         cout << "rotEstimate" << endl << rotEstimate << endl;
         cout << "posEstimate" << endl << posEstimate << endl;
@@ -1122,15 +1122,13 @@ bool Tracking::TrackWithMotionModel()
         cout << "delta t " << dt << endl;
         cout << "RotInc" << endl << RotInc << endl;
         cout << "PosInc" << endl << PosInc << endl;
-        cout << "R_W_B*PosInc" << endl << R_W_B*PosInc << endl;
+        cout << "R_W_I*PosInc" << endl << R_W_I*PosInc << endl;
 
         cout << "0.5*mGravity_I*dt2" << endl << 0.5*mGravity_I*dt2 << endl;
 
-        cout << "mVelocity*dt" << endl << mVelocity*dt << endl;
+        cout << "mR_I_C*mVelocity*dt" << endl << mR_I_C*mVelocity*dt << endl;
 
-        cout << "t_W_B" << endl << t_W_B << endl;
-
-        cout << "norm(VelInc) " << norm(VelInc) << "angleAxisTheta " << angleAxisTheta << endl;
+        cout << "t_W_I" << endl << t_W_I << endl;
 
         cout << "rotEstimate" << endl << rotEstimate << endl;
         cout << "posEstimate" << endl << posEstimate << endl;

@@ -225,7 +225,7 @@ protected:
     cv::Mat mVelocity;
     cv::Mat mGravity_B, mGravity_I;
     cv::Mat mT_C_B, mT_B_C, mR_C_B;
-    cv::Mat mT_C_I, mT_I_C, mR_I_C;
+    cv::Mat mT_C_I, mT_I_C, mR_I_C, mR_C_I;
     cv::Mat mLastTwc;
     cv::Mat mH;
     cv::Mat mV;

@@ -119,7 +119,7 @@ int main(int argc, char **argv)
         fsSettings["LEFT.R"] >> R_l;
         fsSettings["RIGHT.R"] >> R_r;
 
-        fsSettings["T_RIGHT_LEFT"] >> T_R_L;
+        fsSettings["T_CAM1_CAM0"] >> T_R_L;
 
 
         if (P_l.empty() || P_r.empty() || R_l.empty() || R_r.empty())
