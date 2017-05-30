@@ -46,7 +46,7 @@ public:
     cv::Mat M1l,M2l,M1r,M2r;
     ros::NodeHandle* pnh;
     ros::Publisher mPosePub;
-    cv::Mat mT_C_B, mT_B_C, mT_B_V;
+    cv::Mat mT_C_B, mT_B_C, mT_C_I;
 };
 
 class ImuGrabber
@@ -148,12 +148,12 @@ int main(int argc, char **argv)
 
     if(USE_BODY_FRAME)
     {
-        cv::Mat T_C_B, T_B_V;
+        cv::Mat T_C_I, T_C_B;
 
-        fsSettings["T_LEFT_IMU"] >> T_C_B;
-        fsSettings["T_IMU_VICON"] >> T_B_V;
+        fsSettings["T_CAM0_IMU"] >> T_C_I;
+        fsSettings["T_CAM0_BODY"] >> T_C_B;
 
-        if (T_C_B.empty() || T_B_V.empty())
+        if (T_C_I.empty() || T_C_B.empty())
         {
             cerr << "ERROR: Inertial extrinsic transform missing!" << endl;
             return -1;
@@ -161,12 +161,12 @@ int main(int argc, char **argv)
 
         image_grb.mT_C_B = T_C_B;
         image_grb.mT_B_C = T_C_B.inv();
-        image_grb.mT_B_V = T_B_V;
+        image_grb.mT_C_I = T_C_I;
 
 
         image_grb.mT_C_B.convertTo(image_grb.mT_C_B, CV_32F);
         image_grb.mT_B_C.convertTo(image_grb.mT_B_C, CV_32F);
-        image_grb.mT_B_V.convertTo(image_grb.mT_B_V, CV_32F);
+        image_grb.mT_C_I.convertTo(image_grb.mT_C_I, CV_32F);
     }
 
     ros::Subscriber imu_sub = nh.subscribe("/imu/raw",5,&ImuGrabber::GrabImu,&imu_grb);
@@ -231,7 +231,7 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
 
         if (USE_BODY_FRAME)
         {
-            T_W_V = mT_B_V * mT_B_C * T_W_C.inv();
+            T_W_V =  mT_B_C * T_W_C.inv();
         }
         else
         {

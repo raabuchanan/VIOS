@@ -71,11 +71,11 @@ private:
 	double mdTime2Sum;
 	Eigen::Vector3d mAccelBias;
 	Eigen::Vector3d mGyroBias;
-	Eigen::Vector3d mGravity;
+	Eigen::Vector3d mGravity_B;
 	uint64_t mLastTime;
 	int mInitCount;
 
-	Eigen::Matrix3d mR_B_C;
+	Eigen::Matrix3d mR_I_C, mR_C_B;
 };
 
 } //namespace ORB_SLAM

@@ -37,14 +37,19 @@ MotionModel::MotionModel(const string& strSettingPath)
     mAccelBias = Eigen::Vector3d::Zero(3);
     mGyroBias = Eigen::Vector3d::Zero(3);
 
-    mGravity = Eigen::Vector3d::Zero(3);
-    mGravity(2) = GRAVITATIONAL_ACCELERATION;
+    mGravity_B = Eigen::Vector3d::Zero(3);
+    mGravity_B(2) = GRAVITATIONAL_ACCELERATION;
 
     cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
-    cv::Mat T_C_B;
-    fSettings["T_IMU_VICON"] >> T_C_B;
+    cv::Mat T_C_I, T_C_B;
+    fSettings["T_CAM0_IMU"] >> T_C_I;
+    fSettings["T_CAM0_BODY"] >> T_C_B;
 
-    cv::cv2eigen(T_C_B.rowRange(0,3).colRange(0,3).t(), mR_B_C);
+    T_C_I.convertTo(T_C_I, CV_32F);
+    T_C_B.convertTo(T_C_B, CV_32F);
+
+    cv::cv2eigen(T_C_I.rowRange(0,3).colRange(0,3).t(), mR_I_C);
+    cv::cv2eigen(T_C_B.rowRange(0,3).colRange(0,3), mR_C_B);
 
 
 }
@@ -54,7 +59,7 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
     if (mInitCount < 50)
     {
         mLastTime = NewMeasurement->TimeStamp;
-        mAccelBias += NewMeasurement->LinearAcceleration + mR_B_C * mGravity;
+        mAccelBias += NewMeasurement->LinearAcceleration + mR_I_C * mR_C_B * mGravity_B;
         mGyroBias += NewMeasurement->AngularVelocity;
         mInitCount++;
 
@@ -65,11 +70,13 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
         }
 
 
-        // cout << "NewMeasurement->LinearAcceleration" << endl << NewMeasurement->LinearAcceleration << endl;
-        // cout << "NewMeasurement->AngularVelocity" << endl << NewMeasurement->AngularVelocity << endl;
-        // cout << "mR_B_C * mGravity" << endl << mR_B_C * mGravity << endl;
-        // cout << "mAccelBias" << endl << mAccelBias << endl;
-        // cout << "mGyroBias" << endl << mGyroBias << endl;
+        cout << "NewMeasurement->LinearAcceleration" << endl << NewMeasurement->LinearAcceleration << endl;
+        cout << "NewMeasurement->AngularVelocity" << endl << NewMeasurement->AngularVelocity << endl;
+        cout << "mR_I_C * mR_C_B * mGravity_B" << endl << mR_I_C * mR_C_B * mGravity_B << endl;
+        // cout << "mR_I_C * mGravity_B" << endl << mR_I_C * mGravity_B << endl;
+        cout << "mInitCount " << mInitCount << endl;
+         cout << "mAccelBias" << endl << mAccelBias << endl;
+        cout << "mGyroBias" << endl << mGyroBias << endl;
 
 
     }
