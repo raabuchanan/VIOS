@@ -154,24 +154,34 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     mGravity_B = cv::Mat::zeros(3,1,CV_32F);
     mGravity_B.at<float>(0,2) = GRAVITATIONAL_ACCELERATION;
 
-    fSettings["T_CAM0_IMU"] >> mT_C_I;
-    fSettings["T_CAM0_BODY"] >> mT_C_B;
+    cv::Mat T_C_I, T_C_B, T_I_B, T_B_I;
 
-    mT_C_I.convertTo(mT_C_I, CV_32F);
-    mT_C_B.convertTo(mT_C_B, CV_32F);
+    fSettings["T_CAM0_IMU"] >> T_C_I;
+    fSettings["T_CAM0_BODY"] >> T_C_B;
+    fSettings["T_IMU_BODY"] >> T_I_B;
 
-    mT_I_C = mT_C_I.inv();
-    mT_B_C = mT_C_B.inv();
+    T_C_I.convertTo(T_C_I, CV_32F);
+    T_C_B.convertTo(T_C_B, CV_32F);
+    T_I_B.convertTo(T_I_B, CV_32F);
+    T_B_I.convertTo(T_B_I, CV_32F);
 
+    mT_C_I = T_C_I;
+
+    if(T_C_B.empty()){
+        T_C_B = T_C_I * T_I_B;
+    }
+
+    mT_C_B = T_C_B;
+    mR_C_B = T_C_B.rowRange(0,3).colRange(0,3);
+    mR_B_C = mR_C_B.t();
+    mT_B_C = T_C_B.inv();
+    mT_I_C = T_C_I.inv();
     mR_I_C = mT_I_C.rowRange(0,3).colRange(0,3);
-    mR_C_I = mR_I_C.t();
+    T_B_I = T_I_B.inv();
+    mR_B_I = T_B_I.rowRange(0,3).colRange(0,3);
+    mGravity_C =  mR_C_B * mGravity_B;
 
-    mR_C_B = mT_C_B.rowRange(0,3).colRange(0,3);
-
-
-    mGravity_I =  mR_I_C * mR_C_B * mGravity_B;
-
-    mGravity_I.convertTo(mGravity_I, CV_32F);
+    //mGravity_C.convertTo(mGravity_C, CV_32F);
 
     mV= cv::Mat::zeros(1,4, CV_32F);
     mV.at<float>(0,3) = 1;
@@ -987,38 +997,41 @@ bool Tracking::TrackWithMotionModel()
     // cout << "VelInc" << endl << VelInc << endl;
     // cout << "RotInc" << endl << RotInc << endl;
 
-    // mpORBextractorLeft->ChangeNFeatures(700*norm(VelInc) + 2000*angleAxisTheta + 500);
-    // mpORBextractorRight->ChangeNFeatures(700*norm(VelInc) + 2000*angleAxisTheta + 500);
+    //V2_03
+    mpORBextractorLeft->ChangeNFeatures(35*norm(VelInc)/dt + 2000*angleAxisTheta + 500);
+    mpORBextractorRight->ChangeNFeatures(35*norm(VelInc)/dt + 2000*angleAxisTheta + 500);
 
     // V2_02
-        mpORBextractorLeft->ChangeNFeatures(25*norm(VelInc)/dt + 1500*angleAxisTheta + 600);
-        mpORBextractorRight->ChangeNFeatures(25*norm(VelInc)/dt + 1500*angleAxisTheta + 600);
+        // mpORBextractorLeft->ChangeNFeatures(25*norm(VelInc)/dt + 1500*angleAxisTheta + 600);
+        // mpORBextractorRight->ChangeNFeatures(25*norm(VelInc)/dt + 1500*angleAxisTheta + 600);
     }
 
     // Estimated Pose from world to body in world frame
-    cv::Mat rotEstimate = R_W_I*RotInc;
-    //cv::Mat velEstimate = mVelocity + R_W_I*VelInc + mR_C_B*mGravity_B*dt;
-    cv::Mat posEstimate = t_W_I + mR_I_C*mVelocity*dt + 0.5*mGravity_I*dt2 + R_W_I*PosInc;
+    cv::Mat rotEstimate = R_W_I * RotInc;
+    //cv::Mat velEstimate = mVelocity + R_W_I*VelInc + mR_C_B*mGravity_C*dt;
+
+    cv::Mat posEstimate = t_W_I + mVelocity*dt + 0.5*mGravity_C*dt2 + R_W_I * PosInc;
 
     cv::Mat CurrentT_W_I;
 
     hconcat(rotEstimate, posEstimate, mH);
     vconcat(mH, mV, CurrentT_W_I);
 
-    cv::Mat T_W_C_current = CurrentT_W_I*mT_I_C;
+    cv::Mat T_C_W_current = CurrentT_W_I*mT_I_C;
 
     // T_C_W in camera frame
-    cv::Mat motionModelGuess = T_W_C_current.inv();
-
+    cv::Mat motionModelGuess = T_C_W_current.inv();
 
     // cout << "delta t " << dt << endl;
     // cout << "RotInc" << endl << RotInc << endl;
     // cout << "PosInc" << endl << PosInc << endl;
-    // cout << "R_W_I*PosInc" << endl << R_W_I*PosInc << endl;
+    // cout << "R_W_I" << endl << R_W_I << endl;
+    // cout << "R_W_I * RotInc" << endl << R_W_I * RotInc << endl;
+    // cout << "R_W_I * PosInc" << endl << R_W_I * PosInc << endl;
 
-    // cout << "0.5*mGravity_I*dt2" << endl << 0.5*mGravity_I*dt2 << endl;
+    // cout << "0.5*mGravity_C*dt2" << endl << 0.5*mGravity_C*dt2 << endl;
 
-    // cout << "mR_I_C*mVelocity*dt" << endl << mR_I_C*mVelocity*dt << endl;
+    // cout << " mVelocity*dt" << endl <<  mVelocity*dt << endl;
 
     // cout << "t_W_I" << endl << t_W_I << endl;
 
@@ -1058,7 +1071,7 @@ bool Tracking::TrackWithMotionModel()
         cout << "PosInc" << endl << PosInc << endl;
         cout << "R_W_I*PosInc" << endl << R_W_I*PosInc << endl;
 
-        cout << "0.5*mGravity_I*dt2" << endl << 0.5*mGravity_I*dt2 << endl;
+        cout << "0.5*mGravity_C*dt2" << endl << 0.5*mGravity_C*dt2 << endl;
 
         cout << "mR_I_C*mVelocity*dt" << endl << mR_I_C*mVelocity*dt << endl;
 
@@ -1124,7 +1137,7 @@ bool Tracking::TrackWithMotionModel()
         cout << "PosInc" << endl << PosInc << endl;
         cout << "R_W_I*PosInc" << endl << R_W_I*PosInc << endl;
 
-        cout << "0.5*mGravity_I*dt2" << endl << 0.5*mGravity_I*dt2 << endl;
+        cout << "0.5*mGravity_C*dt2" << endl << 0.5*mGravity_C*dt2 << endl;
 
         cout << "mR_I_C*mVelocity*dt" << endl << mR_I_C*mVelocity*dt << endl;
 

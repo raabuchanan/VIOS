@@ -80,8 +80,19 @@ RIGHT.P:  !!opencv-matrix
    dt: d
    data: [471.547836, 0.000000, 387.789700, -51.817399, 0.000000, 471.547836, 241.582283, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000]
 
+
+# Transform from right camrea to left camera in right camera's frame
+T_CAM1_CAM0: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data: [-1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          0, 0, 0, 1]
+
 # Transform from imu to left camera with respoect to left camera
-T_LEFT_IMU: !!opencv-matrix
+T_CAM0_IMU: !!opencv-matrix
    rows: 4
    cols: 4
    dt: d 
@@ -89,14 +100,8 @@ T_LEFT_IMU: !!opencv-matrix
           0, 1, 0, 0,
           0, 0, 1, 0,
           0, 0, 0, 1]
-   # data: [0.01476960368055319, 0.9996668546037443, -0.02116692263358451, 0.06610086169028019,
-   #       -0.99986528036748, 0.01491752462460677, 0.006847523255539449, -0.013698980112073279,
-   #       0.0071610001243047556, 0.02106293582886804, 0.9997525057790498, -0.0007667891785872767,
-   #       0.0, 0.0, 0.0, 1.0]
-
-
 # Transform from vicon to imu with respect to imu
-T_IMU_VICON: !!opencv-matrix
+T_CAM0_BODY: !!opencv-matrix
    rows: 4
    cols: 4
    dt: d 

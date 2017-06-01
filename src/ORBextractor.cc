@@ -1133,7 +1133,7 @@ void ORBextractor::ComputePyramid(cv::Mat image)
 
 void ORBextractor::ChangeNFeatures(int newNFeatures){
 
-    if(!mbAdaptiveFeatures || abs(newNFeatures - nfeatures) < 100)
+    if(!mbAdaptiveFeatures || abs(newNFeatures - nfeatures) < 200)
         return;
 
     if(newNFeatures > 1200){

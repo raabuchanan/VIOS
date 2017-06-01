@@ -41,16 +41,23 @@ MotionModel::MotionModel(const string& strSettingPath)
     mGravity_B(2) = GRAVITATIONAL_ACCELERATION;
 
     cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
-    cv::Mat T_C_I, T_C_B;
+
+
+    cv::Mat T_C_I, T_I_C, T_C_B, T_I_B;
     fSettings["T_CAM0_IMU"] >> T_C_I;
     fSettings["T_CAM0_BODY"] >> T_C_B;
+    fSettings["T_IMU_BODY"] >> T_I_B;
 
     T_C_I.convertTo(T_C_I, CV_32F);
     T_C_B.convertTo(T_C_B, CV_32F);
+    T_I_B.convertTo(T_I_B, CV_32F);
 
-    cv::cv2eigen(T_C_I.rowRange(0,3).colRange(0,3).t(), mR_I_C);
-    cv::cv2eigen(T_C_B.rowRange(0,3).colRange(0,3), mR_C_B);
 
+    if(T_I_B.empty()){
+        T_I_B = T_C_I.inv() * T_C_B;
+    }
+    
+    cv::cv2eigen(T_I_B.rowRange(0,3).colRange(0,3), mR_I_B);
 
 }
 
@@ -59,7 +66,7 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
     if (mInitCount < 50)
     {
         mLastTime = NewMeasurement->TimeStamp;
-        mAccelBias += NewMeasurement->LinearAcceleration + mR_I_C * mR_C_B * mGravity_B;
+        mAccelBias += NewMeasurement->LinearAcceleration + mR_I_B * mGravity_B;
         mGyroBias += NewMeasurement->AngularVelocity;
         mInitCount++;
 
@@ -72,7 +79,7 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
 
         cout << "NewMeasurement->LinearAcceleration" << endl << NewMeasurement->LinearAcceleration << endl;
         cout << "NewMeasurement->AngularVelocity" << endl << NewMeasurement->AngularVelocity << endl;
-        cout << "mR_I_C * mR_C_B * mGravity_B" << endl << mR_I_C * mR_C_B * mGravity_B << endl;
+        cout << "mR_I_C * mR_C_B * mGravity_B" << endl << mR_I_B * mGravity_B << endl;
         // cout << "mR_I_C * mGravity_B" << endl << mR_I_C * mGravity_B << endl;
         cout << "mInitCount " << mInitCount << endl;
          cout << "mAccelBias" << endl << mAccelBias << endl;
@@ -101,8 +108,8 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
 
         mLastTime = NewMeasurement->TimeStamp;
 
-        // cout << "NewMeasurement->AngularVelocity" << NewMeasurement->AngularVelocity << endl;
-        // cout << "NewMeasurement->LinearAcceleration" << NewMeasurement->LinearAcceleration << endl;
+        // cout << "NewMeasurement->AngularVelocity - mGyroBias" << endl << NewMeasurement->AngularVelocity - mGyroBias << endl;
+        // cout << "NewMeasurement->LinearAcceleration - mAccelBias" << endl <<  NewMeasurement->LinearAcceleration - mAccelBias << endl;
 
 
         Eigen::Matrix3d dR =

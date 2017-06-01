@@ -148,30 +148,35 @@ int main(int argc, char **argv)
 
     if(USE_BODY_FRAME)
     {
-        cv::Mat T_C_I, T_C_B;
+        cv::Mat T_C_I, T_C_B, T_I_B;
 
-        fsSettings["T_CAM0_IMU"] >> T_C_I;
+        
         fsSettings["T_CAM0_BODY"] >> T_C_B;
+        fsSettings["T_CAM0_IMU"] >> T_C_I;
+        fsSettings["T_IMU_BODY"] >> T_I_B;
 
-        if (T_C_I.empty() || T_C_B.empty())
+        if (T_C_B.empty() && !T_I_B.empty())
+        {
+            cout << "EuRoC" << endl;
+            image_grb.mT_C_B = T_C_I * T_I_B;
+            image_grb.mT_B_C = T_I_B.inv() * T_C_I.inv();
+        }
+        else if(T_I_B.empty())
         {
             cerr << "ERROR: Inertial extrinsic transform missing!" << endl;
             return -1;
+        }else{
+            image_grb.mT_C_B = T_C_B;
+            image_grb.mT_B_C = T_C_B.inv();
         }
-
-        image_grb.mT_C_B = T_C_B;
-        image_grb.mT_B_C = T_C_B.inv();
-        image_grb.mT_C_I = T_C_I;
-
 
         image_grb.mT_C_B.convertTo(image_grb.mT_C_B, CV_32F);
         image_grb.mT_B_C.convertTo(image_grb.mT_B_C, CV_32F);
-        image_grb.mT_C_I.convertTo(image_grb.mT_C_I, CV_32F);
     }
 
-    ros::Subscriber imu_sub = nh.subscribe("/imu/raw",5,&ImuGrabber::GrabImu,&imu_grb);
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/infrared/infrared", 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/infrared2/infrared2", 1);
+    ros::Subscriber imu_sub = nh.subscribe("/imu0",5,&ImuGrabber::GrabImu,&imu_grb);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/cam0/image_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/cam1/image_raw", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(5), left_sub,right_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo,&image_grb,_1,_2));
@@ -188,7 +193,7 @@ int main(int argc, char **argv)
 void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight)
 {
     // Copy the ros image message to cv::Mat.
-    cv::Mat T_W_C;
+    cv::Mat T_C_W;
 
     cv_bridge::CvImageConstPtr cv_ptrLeft;
     try
@@ -217,25 +222,25 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
         cv::Mat imLeft, imRight;
         cv::remap(cv_ptrLeft->image,imLeft,M1l,M2l,cv::INTER_LINEAR);
         cv::remap(cv_ptrRight->image,imRight,M1r,M2r,cv::INTER_LINEAR);
-        T_W_C = mpSLAM->TrackStereo(imLeft,imRight,cv_ptrLeft->header.stamp.toSec());
+        T_C_W = mpSLAM->TrackStereo(imLeft,imRight,cv_ptrLeft->header.stamp.toSec());
     }
     else
     {
-        T_W_C = mpSLAM->TrackStereo(cv_ptrLeft->image,cv_ptrRight->image,cv_ptrLeft->header.stamp.toSec());
+        T_C_W = mpSLAM->TrackStereo(cv_ptrLeft->image,cv_ptrRight->image,cv_ptrLeft->header.stamp.toSec());
     }
 
-    if(!T_W_C.empty())
+    if(!T_C_W.empty())
     {
         cv::Mat T_W_V;
         geometry_msgs::TransformStamped msg;
 
         if (USE_BODY_FRAME)
         {
-            T_W_V =  mT_B_C * T_W_C.inv();
+            T_W_V =  mT_B_C * T_C_W.inv();
         }
         else
         {
-            T_W_V = T_W_C.inv();
+            T_W_V = T_C_W.inv();
         }
 
         msg.header = msgLeft->header;

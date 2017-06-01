@@ -75,7 +75,7 @@ private:
 	uint64_t mLastTime;
 	int mInitCount;
 
-	Eigen::Matrix3d mR_I_C, mR_C_B;
+	Eigen::Matrix3d mR_I_B;
 };
 
 } //namespace ORB_SLAM

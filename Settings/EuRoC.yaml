@@ -89,7 +89,7 @@ RIGHT.P:  !!opencv-matrix
           0, 0, 1, 0]
 
 # Transform from left camrea to right camera with respect to right camera
-T_RIGHT_LEFT: !!opencv-matrix
+T_CAM1_CAM0: !!opencv-matrix
    rows: 4
    cols: 4
    dt: d
@@ -99,7 +99,7 @@ T_RIGHT_LEFT: !!opencv-matrix
          0.0, 0.0, 0.0, 1.0]
 
 # Transform from imu to left camera with respoect to left camera
-T_LEFT_IMU: !!opencv-matrix
+T_CAM0_IMU: !!opencv-matrix
    rows: 4
    cols: 4
    dt: d 
@@ -108,9 +108,8 @@ T_LEFT_IMU: !!opencv-matrix
          0.0071610001243047556, 0.02106293582886804, 0.9997525057790498, -0.0007667891785872767,
          0.0, 0.0, 0.0, 1.0]
 
-
 # Transform from vicon to imu with respect to imu
-T_IMU_VICON: !!opencv-matrix
+T_IMU_BODY: !!opencv-matrix
    rows: 4
    cols: 4
    dt: d 
@@ -118,21 +117,13 @@ T_IMU_VICON: !!opencv-matrix
          -0.02078, -0.99972, -0.01114, -0.02781,
           0.94150, -0.01582, -0.33665, -0.12395,
               0.0,      0.0,      0.0,      1.0]
-   # data: [1, 0, 0, 0,
-   #        0, 1, 0, 0,
-   #        0, 0, 1, 0,
-   #        0, 0, 0, 1]
-   # data: [0.33638, -0.01749,  0.94156,  0.06901,
-   #       -0.02078, -0.99972, -0.01114, -0.02781,
-   #        0.94150, -0.01582, -0.33665, -0.12395,
-   #            0.0,      0.0,      0.0,      1.0]
 
 #--------------------------------------------------------------------------------------------
 # ORB Parameters
 #--------------------------------------------------------------------------------------------
 
 # ORB Extractor: Number of features per image
-ORBextractor.nFeatures: 1200
+ORBextractor.nFeatures: 800
 
 # ORB Extractor: Scale factor between levels in the scale pyramid   
 ORBextractor.scaleFactor: 1.2
