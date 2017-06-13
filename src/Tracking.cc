@@ -177,8 +177,8 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     mT_B_C = T_C_B.inv();
     mT_I_C = T_C_I.inv();
     mR_I_C = mT_I_C.rowRange(0,3).colRange(0,3);
-    T_B_I = T_I_B.inv();
-    mR_B_I = T_B_I.rowRange(0,3).colRange(0,3);
+    //T_B_I = T_I_B.inv();
+    //mR_B_I = T_B_I.rowRange(0,3).colRange(0,3);
     mGravity_C =  mR_C_B * mGravity_B;
 
     //mGravity_C.convertTo(mGravity_C, CV_32F);
@@ -998,12 +998,12 @@ bool Tracking::TrackWithMotionModel()
     // cout << "RotInc" << endl << RotInc << endl;
 
     //V2_03
-    mpORBextractorLeft->ChangeNFeatures(35*norm(VelInc)/dt + 2000*angleAxisTheta + 500);
-    mpORBextractorRight->ChangeNFeatures(35*norm(VelInc)/dt + 2000*angleAxisTheta + 500);
+    // mpORBextractorLeft->ChangeNFeatures(35*norm(VelInc)/dt + 2000*angleAxisTheta + 500);
+    // mpORBextractorRight->ChangeNFeatures(35*norm(VelInc)/dt + 2000*angleAxisTheta + 500);
 
     // V2_02
-        // mpORBextractorLeft->ChangeNFeatures(25*norm(VelInc)/dt + 1500*angleAxisTheta + 600);
-        // mpORBextractorRight->ChangeNFeatures(25*norm(VelInc)/dt + 1500*angleAxisTheta + 600);
+        mpORBextractorLeft->ChangeNFeatures(25*norm(VelInc)/dt + 1500*angleAxisTheta + 600);
+        mpORBextractorRight->ChangeNFeatures(25*norm(VelInc)/dt + 1500*angleAxisTheta + 600);
     }
 
     // Estimated Pose from world to body in world frame

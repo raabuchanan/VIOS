@@ -154,14 +154,13 @@ int main(int argc, char **argv)
         fsSettings["T_CAM0_BODY"] >> T_C_B;
         fsSettings["T_CAM0_IMU"] >> T_C_I;
         fsSettings["T_IMU_BODY"] >> T_I_B;
-
         if (T_C_B.empty() && !T_I_B.empty())
         {
-            cout << "EuRoC" << endl;
+            ROS_WARN("EuRoC");
             image_grb.mT_C_B = T_C_I * T_I_B;
-            image_grb.mT_B_C = T_I_B.inv() * T_C_I.inv();
+            image_grb.mT_B_C = T_I_B * T_C_I.inv();
         }
-        else if(T_I_B.empty())
+        else if(T_C_B.empty())
         {
             cerr << "ERROR: Inertial extrinsic transform missing!" << endl;
             return -1;
@@ -174,9 +173,9 @@ int main(int argc, char **argv)
         image_grb.mT_B_C.convertTo(image_grb.mT_B_C, CV_32F);
     }
 
-    ros::Subscriber imu_sub = nh.subscribe("/imu0",5,&ImuGrabber::GrabImu,&imu_grb);
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/cam0/image_raw", 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/cam1/image_raw", 1);
+    ros::Subscriber imu_sub = nh.subscribe("/ibis/imu0",5,&ImuGrabber::GrabImu,&imu_grb);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/ibis/cam1/image_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/ibis/cam0/image_raw", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(5), left_sub,right_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo,&image_grb,_1,_2));
@@ -251,11 +250,40 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
         msg.transform.translation.y = T_W_V.at<float>(1,3);
         msg.transform.translation.z = T_W_V.at<float>(2,3);
 
+        cv::Mat M;
+
+        T_W_V.copyTo(M);
+        M.convertTo(M, CV_64F);
+        Eigen::Matrix<double,3,3> eigMat;
+        cv2eigen(M.rowRange(0,3).colRange(0,3),eigMat);
+        Eigen::Quaterniond q(eigMat);
+
+        std::vector<float> v(4);
+        v[0] = q.x();
+        v[1] = q.y();
+        v[2] = q.z();
+        v[3] = q.w();
+
         // TODO Quaternion rotations
-        msg.transform.rotation.x = 0;
-        msg.transform.rotation.y = 0;
-        msg.transform.rotation.z = 0;
-        msg.transform.rotation.w = 1;
+        msg.transform.rotation.w = q.w();
+        msg.transform.rotation.x = q.x();
+        msg.transform.rotation.y = q.y();
+        msg.transform.rotation.z = q.z();
+
+        // qw= √(1 + m00 + m11 + m22) /2
+        // qx = (m21 - m12)/( 4 *qw)
+        // qy = (m02 - m20)/( 4 *qw)
+        // qz = (m10 - m01)/( 4 *qw)
+
+        // double qw = sqrt(1 + T_W_V.at<float>(0,0)
+        //                    + T_W_V.at<float>(1,1)
+        //                    + T_W_V.at<float>(2,2))/2;
+
+        // // TODO Quaternion rotations
+        // msg.transform.rotation.w = qw;
+        // msg.transform.rotation.x = (T_W_V.at<float>(2,1) - T_W_V.at<float>(1,2)) / (4*qw);
+        // msg.transform.rotation.y = (T_W_V.at<float>(0,2) - T_W_V.at<float>(2,0)) / (4*qw);
+        // msg.transform.rotation.z = (T_W_V.at<float>(1,0) - T_W_V.at<float>(0,1)) / (4*qw);
 
         mPosePub.publish(msg);
     }
