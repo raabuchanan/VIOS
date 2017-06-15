@@ -68,7 +68,7 @@ rosrun VIOS Stereo Vocabulary/ORBvoc.txt Settings/EuRoC.yaml true
 ```
 
 ## [Option 2] orb_slam_2_ros interface
-Follow the instructions [here](https://github.com/russellaabuchanan/orb_slam_2_ros)
+Instead of cloning this repository go [here](https://github.com/russellaabuchanan/orb_slam_2_ros) and build this project. Running is similar to above but using roslaunch.
 
 # Settings files
 ORB_SLAM2 and VIOS rely on .yaml files which contain camera intrinsic and extrinsic data. In VIOS all the settings files can be found in the Settings folder. Currently I already have settings files for most MAVs in the ASL lab as well as for the EuRoC dataset however it might be necessary to create a new settings file. There should porbably be a tool made to automate this process for for now here is a step by step guide to build one from scratch.
