@@ -83,8 +83,8 @@ ORB_SLAM2 and VIOS rely on .yaml files which contain camera intrinsic and extrin
 3. The following data can be copied directly from the cam-chains into the settings file:
     * cam0cam1-chain, cam0, `distortion_coeffs` --> settings.yaml, `LEFT.D`, data (Might need to change cols depending on distortion model)
     * cam0cam1-chain, cam1, `distortion_coeffs` --> settings.yaml, `RIGHT.D`, data(Might need to change cols depending on distortion model)
-    * cam0cam1-chain, cam0, `intrinsics` --> settings.yaml, `LEFT.K`, data (The order changes though. 0-->(0,0), 1-->(1,1), 2-->(0,2),3-->(1,2))
-    * cam0cam1-chain, cam1, `intrinsics` --> settings.yaml, `RIGHT.K`, data (The order changes though. 0-->(0,0), 1-->(1,1), 2-->(0,2),3-->(1,2))
+    * cam0cam1-chain, cam0, `intrinsics` --> settings.yaml, `LEFT.K`, data (The order changes. intrinsics[0]-->K(0,0), intrinsics[1]-->K(1,1), intrinsics[2]-->K(0,2), intrinsics[3]-->K(1,2))
+    * cam0cam1-chain, cam1, `intrinsics` --> settings.yaml, `RIGHT.K`, data (The order changes. intrinsics[0]-->K(0,0), intrinsics[1]-->K(1,1), intrinsics[2]-->K(0,2), intrinsics[3]-->(K1,2))
     * cam0cam1-chain, `T_cn_cnm1` --> settings.yaml, `T_CAM1_CAM0`, data
     * cam0imu0-chain, cam1, `T_cam_imu` --> settings.yaml, `T_CAM0_IMU`, data
     * cam0fcu-chain, cam1, `T_cam_imu` --> settings.yaml, `T_CAM0_BODY`, data
