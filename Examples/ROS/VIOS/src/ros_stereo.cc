@@ -173,9 +173,9 @@ int main(int argc, char **argv)
         image_grb.mT_B_C.convertTo(image_grb.mT_B_C, CV_32F);
     }
 
-    ros::Subscriber imu_sub = nh.subscribe("/ibis/imu0",5,&ImuGrabber::GrabImu,&imu_grb);
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/ibis/cam1/image_raw", 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/ibis/cam0/image_raw", 1);
+    ros::Subscriber imu_sub = nh.subscribe("/imu0",5,&ImuGrabber::GrabImu,&imu_grb);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/cam0/image_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/cam1/image_raw", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(5), left_sub,right_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo,&image_grb,_1,_2));
@@ -264,7 +264,6 @@ void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const se
         v[2] = q.z();
         v[3] = q.w();
 
-        // TODO Quaternion rotations
         msg.transform.rotation.w = q.w();
         msg.transform.rotation.x = q.x();
         msg.transform.rotation.y = q.y();

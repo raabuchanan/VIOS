@@ -76,14 +76,14 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
             mGyroBias = mGyroBias / 50;
         }
 
-
+        #ifdef DEBUG
         cout << "NewMeasurement->LinearAcceleration" << endl << NewMeasurement->LinearAcceleration << endl;
         cout << "NewMeasurement->AngularVelocity" << endl << NewMeasurement->AngularVelocity << endl;
         cout << "mR_I_C * mR_C_B * mGravity_B" << endl << mR_I_B * mGravity_B << endl;
-        // cout << "mR_I_C * mGravity_B" << endl << mR_I_C * mGravity_B << endl;
         cout << "mInitCount " << mInitCount << endl;
-         cout << "mAccelBias" << endl << mAccelBias << endl;
+        cout << "mAccelBias" << endl << mAccelBias << endl;
         cout << "mGyroBias" << endl << mGyroBias << endl;
+        #endif
 
 
     }
@@ -94,23 +94,22 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
         // cout << "NewMeasurement->TimeStamp " << NewMeasurement->TimeStamp << endl;
         // cout << "mLastTime " << mLastTime << endl;
         // cout << "dt " << dt << endl;
-
+        #ifdef DEBUG
         if (abs(dt - 0.005) > 0.0001)
         {
             printf("dt: %f this time: %ld last time: %ld\n", dt,
                    NewMeasurement->TimeStamp, mLastTime);
         }
+        #endif
 
         if(mdTimeSum + dt > 0.1){
-            cout << "Resetting motion model" << endl;
+            #ifdef DEBUG
+            cout << "Too long since last motion model request, resetting motion model" << endl;
+            #endif
             ResetIntegration();
         }
 
         mLastTime = NewMeasurement->TimeStamp;
-
-        // cout << "NewMeasurement->AngularVelocity - mGyroBias" << endl << NewMeasurement->AngularVelocity - mGyroBias << endl;
-        // cout << "NewMeasurement->LinearAcceleration - mAccelBias" << endl <<  NewMeasurement->LinearAcceleration - mAccelBias << endl;
-
 
         Eigen::Matrix3d dR =
             ExpMap((NewMeasurement->AngularVelocity - mGyroBias) * dt);
@@ -131,16 +130,6 @@ void MotionModel::IntegrateImuMeasurement(struct ImuMeasurement* NewMeasurement)
 }
 
 void MotionModel::SetTracker(Tracking* pTracking) { mpTracker = pTracking; }
-
-void MotionModel::NewMeasurement(struct ImuMeasurement* NewMeasurement)
-{
-    mCurrentMeasurement.TimeStamp = NewMeasurement->TimeStamp;
-
-    mCurrentMeasurement.AngularVelocity = NewMeasurement->AngularVelocity;
-    mCurrentMeasurement.LinearAcceleration = NewMeasurement->LinearAcceleration;
-
-    //IntegrateImuMeasurement();
-}
 
 void MotionModel::GetMotionModel(cv::Mat& rotInc, cv::Mat& posInc,
                                  cv::Mat& velInc, float& timeInc,
@@ -164,7 +153,7 @@ void MotionModel::ResetIntegration()
 {
     mCurrentMotion.dPosition = Eigen::Vector3d::Zero(3);
     mCurrentMotion.dVelocity = Eigen::Vector3d::Zero(3);
-    mCurrentMotion.dR_W_B = Eigen::Matrix3d::Identity(3, 3);
+    mCurrentMotion.dR_W_B = Eigen::Matrix3d::Identity(3,3);
     mdTimeSum = 0;
     mdTime2Sum = 0;
 }

@@ -47,7 +47,8 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
     mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
-    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0), mbClosingLoop(false)
+    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0), mbClosingLoop(false),
+    _mbAdaptiveFeatures(true)
 {
     // Load camera parameters from settings file
 
@@ -110,14 +111,11 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         cout << "- color order: BGR (ignored if grayscale)" << endl;
 
     // Load ORB parameters
-
     int nFeatures = fSettings["ORBextractor.nFeatures"];
     float fScaleFactor = fSettings["ORBextractor.scaleFactor"];
     int nLevels = fSettings["ORBextractor.nLevels"];
     int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
     int fMinThFAST = fSettings["ORBextractor.minThFAST"];
-
-    bool _mbAdaptiveFeatures = true;
 
     mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST, _mbAdaptiveFeatures);
 
@@ -310,9 +308,6 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 
 void Tracking::Track()
 {
-
-    bool motionModelFailed = false;
-
     if(mState==NO_IMAGES_YET)
     {
         mState = NOT_INITIALIZED;
@@ -361,7 +356,6 @@ void Tracking::Track()
                     if(!bOK)
                     {
                         bOK = TrackReferenceKeyFrame();
-                        motionModelFailed = true;
                     }
                 }
             }
@@ -387,9 +381,6 @@ void Tracking::Track()
                     if(!mVelocity.empty())
                     {
                         bOK = TrackWithMotionModel();
-                        // if(!bOK){
-                        //     motionModelFailed = true;
-                        // }
                     }
                     else
                     {
@@ -465,11 +456,6 @@ void Tracking::Track()
         if(bOK)
         {
             mState = OK;
-
-            if (motionModelFailed)
-            {
-                cout << "mCurrentFrame" << endl << mCurrentFrame.mTcw << endl;
-            }
         }
         else
         {
@@ -489,14 +475,8 @@ void Tracking::Track()
             // Update motion model
             if(!mLastFrame.mTcw.empty())
             {
-                //Don't update velocity if the loop is being closed
-                // if(!mbClosingLoop){
                     float dt = mCurrentFrame.mTimeStamp - mLastFrame.mTimeStamp;
-
                     mVelocity = (mCurrentFrame.GetCameraCenter() - mLastFrame.GetCameraCenter()) / dt;
-                // }else{
-                //     cout <<"Not updating velocity while closing loop." << endl;
-                // }
             }
             else
             {
@@ -975,7 +955,6 @@ bool Tracking::TrackWithMotionModel()
     UpdateLastFrame();
     float dt, dt2;
 
-    //cv::Mat T_W_C_last = mLastFrame.GetPoseWorldFrame();
     cv::Mat LastT_W_I = mLastFrame.GetPoseWorldFrame() * mT_C_I; // World to body in the world frame
     cv::Mat R_W_I = LastT_W_I.rowRange(0,3).colRange(0,3);
     cv::Mat t_W_I = LastT_W_I.rowRange(0,3).col(3);
@@ -988,28 +967,22 @@ bool Tracking::TrackWithMotionModel()
 
     double angleAxisTheta = acos((trace(RotInc)[0] - 1)/2);
 
-    if(dt > 0.000001)
-    {
+    if (dt > 0.000001) {
+      // V2_03
+      // mpORBextractorLeft->ChangeNFeatures(35*norm(VelInc)/dt +
+      // 2000*angleAxisTheta + 500);
+      // mpORBextractorRight->ChangeNFeatures(35*norm(VelInc)/dt +
+      // 2000*angleAxisTheta + 500);
 
-    // cout << "delta t " << dt << endl;
-    // cout << "norm(VelInc)/dt " << norm(VelInc)/dt << " angleAxisTheta " << angleAxisTheta << endl;
-
-    // cout << "VelInc" << endl << VelInc << endl;
-    // cout << "RotInc" << endl << RotInc << endl;
-
-    //V2_03
-    // mpORBextractorLeft->ChangeNFeatures(35*norm(VelInc)/dt + 2000*angleAxisTheta + 500);
-    // mpORBextractorRight->ChangeNFeatures(35*norm(VelInc)/dt + 2000*angleAxisTheta + 500);
-
-    // V2_02
-        mpORBextractorLeft->ChangeNFeatures(25*norm(VelInc)/dt + 1500*angleAxisTheta + 600);
-        mpORBextractorRight->ChangeNFeatures(25*norm(VelInc)/dt + 1500*angleAxisTheta + 600);
+      // V2_02
+      mpORBextractorLeft->ChangeNFeatures(25 * norm(VelInc) / dt +
+                                          1500 * angleAxisTheta + 600);
+      mpORBextractorRight->ChangeNFeatures(25 * norm(VelInc) / dt +
+                                           1500 * angleAxisTheta + 600);
     }
 
     // Estimated Pose from world to body in world frame
     cv::Mat rotEstimate = R_W_I * RotInc;
-    //cv::Mat velEstimate = mVelocity + R_W_I*VelInc + mR_C_B*mGravity_C*dt;
-
     cv::Mat posEstimate = t_W_I + mVelocity*dt + 0.5*mGravity_C*dt2 + R_W_I * PosInc;
 
     cv::Mat CurrentT_W_I;
@@ -1021,25 +994,6 @@ bool Tracking::TrackWithMotionModel()
 
     // T_C_W in camera frame
     cv::Mat motionModelGuess = T_C_W_current.inv();
-
-    // cout << "delta t " << dt << endl;
-    // cout << "RotInc" << endl << RotInc << endl;
-    // cout << "PosInc" << endl << PosInc << endl;
-    // cout << "R_W_I" << endl << R_W_I << endl;
-    // cout << "R_W_I * RotInc" << endl << R_W_I * RotInc << endl;
-    // cout << "R_W_I * PosInc" << endl << R_W_I * PosInc << endl;
-
-    // cout << "0.5*mGravity_C*dt2" << endl << 0.5*mGravity_C*dt2 << endl;
-
-    // cout << " mVelocity*dt" << endl <<  mVelocity*dt << endl;
-
-    // cout << "t_W_I" << endl << t_W_I << endl;
-
-    // cout << "rotEstimate" << endl << rotEstimate << endl;
-    // cout << "posEstimate" << endl << posEstimate << endl;
-    
-    // cout << "Last Pose " << endl << mLastFrame.mTcw << endl;
-    // cout << "Motion Model Guess" << endl << motionModelGuess << endl;
 
     mCurrentFrame.SetPose(motionModelGuess);
     
@@ -1057,15 +1011,17 @@ bool Tracking::TrackWithMotionModel()
     // If few matches, uses a wider window search
     if(nmatches<20)
     {
-        printf("[WARNING] Too few matches using wider area. Matches: %d\n", nmatches);
-        cout << "delta t " << dt << endl;
+        #ifdef DEBUG
+        cout << "[WARNING] Too few matches using wider area. Matches found: " << nmatches << endl;
+        #endif
         fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
         nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,2*th,mSensor==System::MONOCULAR);
     }
 
     if(nmatches<20)
     {
-        printf("[WARNING] Motion Model Failed Line: %d\n", __LINE__);
+        #ifdef DEBUG
+        cout << "[WARNING] Motion Model Failed Line:" << endl;
         cout << "delta t " << dt << endl;
         cout << "RotInc" << endl << RotInc << endl;
         cout << "PosInc" << endl << PosInc << endl;
@@ -1082,6 +1038,7 @@ bool Tracking::TrackWithMotionModel()
         
         cout << "Last Pose " << endl << mLastFrame.mTcw << endl;
         cout << "Motion Model Guess" << endl << motionModelGuess << endl;
+        #endif
         return false;
     }
 
@@ -1119,7 +1076,6 @@ bool Tracking::TrackWithMotionModel()
         }
         else
         {
-            printf("[WARNING] Motion Model Failed Line: %d Matches: %d\n", __LINE__,nmatches);
             return false;
         }
     }
@@ -1131,7 +1087,8 @@ bool Tracking::TrackWithMotionModel()
     }
     else
     {
-        printf("[WARNING] Motion Model Failed Line: %d Map Matches: %d\n", __LINE__,nmatchesMap);
+        #ifdef DEBUG
+        cout << "[WARNING] Motion Model Failed Line:" << endl;
         cout << "delta t " << dt << endl;
         cout << "RotInc" << endl << RotInc << endl;
         cout << "PosInc" << endl << PosInc << endl;
@@ -1148,6 +1105,7 @@ bool Tracking::TrackWithMotionModel()
         
         cout << "Last Pose " << endl << mLastFrame.mTcw << endl;
         cout << "Motion Model Guess" << endl << motionModelGuess << endl;
+        #endif
         return false;
     }
 }

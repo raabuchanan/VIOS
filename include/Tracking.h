@@ -229,6 +229,8 @@ protected:
     cv::Mat mLastTwc;
     cv::Mat mH;
     cv::Mat mV;
+
+    bool _mbAdaptiveFeatures;
 };
 
 } //namespace ORB_SLAM
