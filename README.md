@@ -57,7 +57,7 @@ First, open a terminal with Ctrl+Alt+T and launch ROS master:
 ```
 roscore
 ```
-Currently I have only tested on the [EuRoC Dataset](http://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets). Download one of the .bag files to any directoy and in another terminal play it with:
+Currently I have only tested on the [EuRoC Dataset](http://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets). Download one of the .bag files to any directoy. Since the VI-Sensor buffers IMU messages it is necesary to first process the EuRoC bag with the ROS [Cookbook](http://wiki.ros.org/rosbag/Cookbook). Once that is done run the cooked bag in any terminal with:
 ```
 rosbag play <bag file name>.bag
 ```
