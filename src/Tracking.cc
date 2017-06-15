@@ -169,17 +169,9 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         T_C_B = T_C_I * T_I_B;
     }
 
-    mT_C_B = T_C_B;
     mR_C_B = T_C_B.rowRange(0,3).colRange(0,3);
-    mR_B_C = mR_C_B.t();
-    mT_B_C = T_C_B.inv();
     mT_I_C = T_C_I.inv();
-    mR_I_C = mT_I_C.rowRange(0,3).colRange(0,3);
-    //T_B_I = T_I_B.inv();
-    //mR_B_I = T_B_I.rowRange(0,3).colRange(0,3);
     mGravity_C =  mR_C_B * mGravity_B;
-
-    //mGravity_C.convertTo(mGravity_C, CV_32F);
 
     mV= cv::Mat::zeros(1,4, CV_32F);
     mV.at<float>(0,3) = 1;
@@ -1029,7 +1021,7 @@ bool Tracking::TrackWithMotionModel()
 
         cout << "0.5*mGravity_C*dt2" << endl << 0.5*mGravity_C*dt2 << endl;
 
-        cout << "mR_I_C*mVelocity*dt" << endl << mR_I_C*mVelocity*dt << endl;
+        cout << "mVelocity*dt" << endl << mVelocity*dt << endl;
 
         cout << "t_W_I" << endl << t_W_I << endl;
 
@@ -1096,7 +1088,7 @@ bool Tracking::TrackWithMotionModel()
 
         cout << "0.5*mGravity_C*dt2" << endl << 0.5*mGravity_C*dt2 << endl;
 
-        cout << "mR_I_C*mVelocity*dt" << endl << mR_I_C*mVelocity*dt << endl;
+        cout << "mVelocity*dt" << endl << mVelocity*dt << endl;
 
         cout << "t_W_I" << endl << t_W_I << endl;
 

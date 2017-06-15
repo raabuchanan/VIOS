@@ -223,10 +223,9 @@ protected:
 
     // VIOS
     cv::Mat mVelocity;
-    cv::Mat mGravity_B, mGravity_I, mGravity_C;
-    cv::Mat mT_C_B, mT_B_C, mT_C_I, mT_I_C, mT_I_B;
-    cv::Mat mR_C_B, mR_B_C, mR_B_I, mR_I_C;
-    cv::Mat mLastTwc;
+    cv::Mat mGravity_B, mGravity_C;
+    cv::Mat mT_C_I, mT_I_C;
+    cv::Mat mR_C_B;
     cv::Mat mH;
     cv::Mat mV;
 
